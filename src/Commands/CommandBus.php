@@ -80,12 +80,15 @@ class CommandBus
         }
 
         $tree = PlanTree::load($plan);
+        $changed = $tree->serializeMany($this->affected($tree, $changes));
 
         $result = new CommandResult(
             version: (int) $plan->version,
-            blocks: $stale ? $tree->serializeAll() : $tree->serializeMany($this->affected($tree, $changes)),
+            blocks: $stale ? $tree->serializeAll() : $changed,
             deleted: $changes->deletedIds(),
             full: $stale,
+            previousVersion: (int) $plan->version - count($commands),
+            changedBlocks: $changed,
         );
 
         event(new PlanChanged($plan, $result, $user));

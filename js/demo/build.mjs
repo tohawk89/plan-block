@@ -2,7 +2,7 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['demo/vue-demo.ts', 'demo/react-demo.ts'],
+  entryPoints: ['demo/vue-demo.ts', 'demo/react-demo.ts', 'demo/echo.ts'],
   outdir: 'demo/dist',
   bundle: true,
   format: 'esm',

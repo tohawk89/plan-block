@@ -71,6 +71,18 @@ export interface TypeManifest {
 export interface Manifest {
   version: number;
   types: Record<string, TypeManifest>;
+  /** Present when the server can broadcast changes (Laravel broadcasting). */
+  realtime?: { enabled: boolean; channel_prefix: string; event: string };
+}
+
+/** A change another tab or device saved, as broadcast by the server. */
+export interface RemoteChange {
+  plan: string;
+  version: number;
+  previous_version: number | null;
+  /** Missing when the message would have been too large: reload instead. */
+  blocks?: BlockData[];
+  deleted?: BlockId[];
 }
 
 export type CommandType =

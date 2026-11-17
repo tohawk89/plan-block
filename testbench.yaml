@@ -6,9 +6,21 @@ env:
   - DB_CONNECTION=sqlite
   - SESSION_DRIVER=file
   - AUTH_MODEL=Workbench\App\Models\User
+  # Live updates through a local Reverb server: vendor/bin/testbench reverb:start
+  # (demo-only credentials, not secrets)
+  - BROADCAST_CONNECTION=reverb
+  - REVERB_APP_ID=plan-block-demo
+  - REVERB_APP_KEY=plan-block-demo-key
+  - REVERB_APP_SECRET=plan-block-demo-not-a-secret
+  - REVERB_HOST=127.0.0.1
+  - REVERB_PORT=8080
+  - REVERB_SCHEME=http
+  - PLAN_BLOCK_BROADCASTING=true
+  - PLAN_BLOCK_BROADCAST_CONNECTION=sync
 
 providers:
   - Livewire\LivewireServiceProvider
+  - Laravel\Reverb\ReverbServiceProvider
   - Tohawk89\PlanBlock\PlanBlockServiceProvider
   - Workbench\App\Providers\WorkbenchServiceProvider
 

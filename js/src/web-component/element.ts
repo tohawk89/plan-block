@@ -1,5 +1,6 @@
 import { PlanStore, type InitialData } from '../client/store';
 import { LivewireTransport, type LivewireWire } from '../client/livewire-transport';
+import { connectRealtime, echoSource, type EchoLike, type RealtimeSource } from '../client/realtime';
 import { HttpTransport, type Transport } from '../client/transport';
 import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } from '../client/types';
 import { h } from './h';
@@ -67,6 +68,13 @@ export class PlanBlockElement extends HTMLElement {
     }
   }
 
+  /**
+   * Where live updates come from. Defaults to Laravel Echo (window.Echo).
+   * Set before the store is ready, or null to turn live updates off.
+   */
+  realtime: RealtimeSource | null | undefined = undefined;
+  private stopRealtime: (() => void) | null = null;
+
   get labels(): Labels {
     return this._labels;
   }
@@ -99,10 +107,13 @@ export class PlanBlockElement extends HTMLElement {
       }
     } else {
       this.scheduleRender();
+      // Moved back into the page with a ready store: listen again.
+      if (this._store?.plan) this.connectRealtime();
     }
   }
 
   disconnectedCallback(): void {
+    this.disconnectRealtime();
     window.removeEventListener('plan-block-refresh', this.onRefresh);
     this.drag.cancel();
     if (this.ownsStore) {
@@ -155,6 +166,7 @@ export class PlanBlockElement extends HTMLElement {
       store.hydrate(options.initial);
       this.state = 'ready';
       this.render();
+      this.connectRealtime();
       this.emit('ready', { plan: store.plan });
       return;
     }
@@ -162,6 +174,7 @@ export class PlanBlockElement extends HTMLElement {
     if (store.plan) {
       this.state = 'ready';
       this.render();
+      this.connectRealtime();
       return;
     }
 
@@ -172,6 +185,7 @@ export class PlanBlockElement extends HTMLElement {
       await store.load();
       if (this._store !== store) return;
       this.state = 'ready';
+      this.connectRealtime();
       this.emit('ready', { plan: store.plan });
     } catch (error) {
       if (this._store !== store) return;
@@ -248,7 +262,28 @@ export class PlanBlockElement extends HTMLElement {
     store.addEventListener('sync', this.onSync);
   }
 
+  /**
+   * Live updates from other tabs and devices: on when the server has
+   * broadcasting enabled and a source exists (the `realtime` property, or
+   * Laravel Echo on window). realtime="off" turns it off.
+   */
+  private connectRealtime(): void {
+    this.disconnectRealtime();
+    const store = this._store;
+    if (!store?.plan || this.realtime === null || this.getAttribute('realtime') === 'off' || !this.isConnected) return;
+
+    const echo = (globalThis as { Echo?: EchoLike }).Echo;
+    const source = this.realtime !== undefined ? this.realtime : echo ? echoSource(echo) : null;
+    if (source) this.stopRealtime = connectRealtime(store, source);
+  }
+
+  private disconnectRealtime(): void {
+    this.stopRealtime?.();
+    this.stopRealtime = null;
+  }
+
   private detachStore(): void {
+    this.disconnectRealtime();
     const store = this._store;
     if (!store) return;
     store.removeEventListener('change', this.onChange);

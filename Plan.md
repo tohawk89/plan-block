@@ -281,7 +281,7 @@ $plan->commands($user)->check($block)->move($other, $day)->run(); // returns the
 
 ### 8.6 Optional extras
 
-- **Realtime:** after commit, broadcast the change list on `private-plan.{id}` via Laravel broadcasting (Reverb / Pusher); clients apply it the same way as their own responses.
+- **Realtime (built):** opt-in with `plan-block.broadcasting.enabled`. After each committed batch, `PlanUpdated` is broadcast on `private-plan-block.plans.{ulid}` as `plan-block.changed` with `{plan, version, previous_version, blocks, deleted}`, where `blocks` holds only what that batch changed. Channel access follows the `plan-block.view` gate. Clients apply a message when `previous_version` matches their version, ignore ones they already have, and reload after a gap, after a reconnect, or for messages sent without blocks (over `max_payload`, default 8 KB, since Pusher caps messages at 10 KB). The JS client sends `X-Socket-ID` so the sender is skipped. Broadcast failures are reported, never turned into failed saves. Laravel Echo on the page is picked up automatically; any other source can implement `RealtimeSource`.
 - **Command log table:** audit trail and future undo/redo.
 
 ### 8.7 Client events

@@ -2,12 +2,18 @@
 
 namespace Tohawk89\PlanBlock;
 
+use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Tohawk89\PlanBlock\Commands\CommandBus;
+use Tohawk89\PlanBlock\Events\PlanChanged;
+use Tohawk89\PlanBlock\Events\PlanUpdated;
+use Tohawk89\PlanBlock\Listeners\BroadcastPlanChanges;
 use Tohawk89\PlanBlock\Livewire\PlanBlockEditor;
 use Tohawk89\PlanBlock\Models\Plan;
 use Tohawk89\PlanBlock\Support\Ordering;
@@ -64,7 +70,27 @@ class PlanBlockServiceProvider extends ServiceProvider
 
         $this->registerBlade();
         $this->registerLivewire();
+        $this->registerBroadcasting();
         $this->defineDefaultGates();
+    }
+
+    /**
+     * Broadcast saved changes (when enabled) and authorize the per-plan
+     * channel with the "plan-block.view" gate.
+     */
+    protected function registerBroadcasting(): void
+    {
+        Event::listen(PlanChanged::class, BroadcastPlanChanges::class);
+
+        if (! $this->app->bound(BroadcastFactory::class)) {
+            return;
+        }
+
+        Broadcast::channel(PlanUpdated::CHANNEL_PREFIX.'{plan}', function ($user, string $plan) {
+            $model = Plan::query()->where('ulid', strtolower($plan))->first();
+
+            return $model !== null && Gate::forUser($user)->allows('plan-block.view', $model);
+        });
     }
 
     /**

@@ -12,6 +12,7 @@ import type {
   Manifest,
   PlanData,
   PlanResponse,
+  RemoteChange,
   TypeManifest,
 } from './types';
 import { ulid } from './ulid';
@@ -53,6 +54,7 @@ export type SyncState = 'idle' | 'saving' | 'offline';
  *  - command  detail: { command } — a command was issued
  *  - error    detail: { error, command } — the server rejected a command; it was rolled back
  *  - sync     detail: { state, pending } — saving / offline / idle
+ *  - remote   detail: { change } — a change from another tab or device was applied
  */
 export class PlanStore extends EventTarget {
   plan: PlanData | null = null;
@@ -97,6 +99,29 @@ export class PlanStore extends EventTarget {
     this.emit('change');
     this.startQueue();
     if (this.pending.length) this.scheduleFlush();
+  }
+
+  /**
+   * Apply a change saved elsewhere (another tab or device), as broadcast by
+   * the server. Applied directly when it is exactly the next version;
+   * ignored when already seen; otherwise (missed messages, or a message
+   * without blocks) the plan is reloaded. Unsent local changes stay on top.
+   */
+  applyRemote(change: RemoteChange): 'applied' | 'ignored' | 'reloading' {
+    if (!this.plan || this.destroyed || change.plan !== this.plan.id || change.version <= this.plan.version) return 'ignored';
+
+    if (change.previous_version !== this.plan.version || !change.blocks) {
+      void this.reload().catch(() => {});
+      return 'reloading';
+    }
+
+    for (const block of change.blocks) this.confirmed.set(block.id, block);
+    for (const id of change.deleted ?? []) this.confirmed.delete(id);
+    this.plan = { ...this.plan, version: change.version };
+    this.recompute();
+    this.emit('change');
+    this.emit('remote', { change });
+    return 'applied';
   }
 
   /**

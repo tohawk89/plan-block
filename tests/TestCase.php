@@ -29,5 +29,9 @@ abstract class TestCase extends Orchestra
         $app['config']->set('app.url', 'http://localhost');
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
         $app['config']->set('session.driver', 'array');
+        // The demo app broadcasts through Reverb; tests never connect anywhere.
+        $app['config']->set('broadcasting.default', 'null');
+        $app['config']->set('plan-block.broadcasting.enabled', false);
+        $app['config']->set('plan-block.broadcasting.connection', null);
     }
 }

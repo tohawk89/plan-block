@@ -226,5 +226,10 @@
                 "js": "note"
             }
         }
+    },
+    "realtime": {
+        "enabled": false,
+        "channel_prefix": "plan-block.plans.",
+        "event": "plan-block.changed"
     }
 }

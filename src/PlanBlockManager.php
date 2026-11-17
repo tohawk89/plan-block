@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\HtmlString;
 use Tohawk89\PlanBlock\Commands\CommandBus;
 use Tohawk89\PlanBlock\Commands\PendingCommands;
+use Tohawk89\PlanBlock\Events\PlanUpdated;
 use Tohawk89\PlanBlock\Models\Plan;
 use Tohawk89\PlanBlock\Support\PlanTree;
 use Tohawk89\PlanBlock\Types\BlockType;
@@ -56,6 +57,11 @@ class PlanBlockManager
         return [
             'version' => self::MANIFEST_VERSION,
             'types' => $this->types->manifest(),
+            'realtime' => [
+                'enabled' => (bool) config('plan-block.broadcasting.enabled', false),
+                'channel_prefix' => PlanUpdated::CHANNEL_PREFIX,
+                'event' => PlanUpdated::EVENT,
+            ],
         ];
     }
 

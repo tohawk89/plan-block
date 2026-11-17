@@ -35,12 +35,12 @@ function offline(): FakeTransport {
   return transport;
 }
 
-async function editor(storage: MemoryStorage, transport: FakeTransport, locks: LockManagerLike | null = null) {
+async function editor(storage: MemoryStorage, transport: FakeTransport, locks: LockManagerLike | null = null, staleMs = 60) {
   const store = new PlanStore({
     transport,
     storage,
     retry: { base: 10_000, max: 10_000 },
-    persistence: { locks, intervalMs: 20, staleMs: 60 },
+    persistence: { locks, intervalMs: 20, staleMs },
   });
   await store.load();
   return store;
@@ -107,8 +107,9 @@ describe('unsent changes across tabs and editors', () => {
       JSON.stringify({ v: 2, heartbeat: Date.now(), commands: [{ id: 'live1', type: 'check', block: ids.breakfast }] }),
     );
 
+    // A realistic staleness limit: the "live" entry has no editor refreshing it here.
     const transport = new FakeTransport();
-    const store = await editor(storage, transport, null);
+    const store = await editor(storage, transport, null, 30_000);
     await settle();
 
     expect(sentTypes(transport)).toEqual([`check:${ids.lunch}`]);

@@ -4,5 +4,7 @@ export { HttpTransport, RejectedError, TransportError } from './transport';
 export type { Transport, HttpTransportOptions } from './transport';
 export { LivewireTransport } from './livewire-transport';
 export type { LivewireWire } from './livewire-transport';
+export { connectRealtime, echoSource } from './realtime';
+export type { RealtimeSource, EchoLike } from './realtime';
 export { ulid } from './ulid';
 export type * from './types';

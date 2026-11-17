@@ -101,6 +101,18 @@ Props: `initial` or `plan` (ULID), `endpoint`, `readonly`, `shadow`, `noStyles`,
 
 For a completely custom UI, use the headless store directly: `usePlanStore({ initial })` returns the store and a live snapshot (`usePlanSnapshot(store)` for an existing store). Call `store.check(id)`, `store.move(id, { parent, after })` and so on; changes appear instantly and are saved in the background.
 
+### Live updates across tabs and devices
+
+With Laravel broadcasting set up (`php artisan install:broadcasting`, e.g. Reverb or Pusher) and Laravel Echo on the page as `window.Echo`, turn it on:
+
+```dotenv
+PLAN_BLOCK_BROADCASTING=true
+# "sync" sends during the request; leave empty to use your queue (needs a worker)
+PLAN_BLOCK_BROADCAST_CONNECTION=sync
+```
+
+Every saved change is broadcast on the private channel `plan-block.plans.{ulid}`. The package authorizes it with the `plan-block.view` gate. Open editors apply changes from others instantly, and reload by themselves if they missed any (for example after a dropped connection). Load Echo before `@planBlockAssets`. If broadcasting fails (say Reverb is down), the change is still saved and the error is reported, not shown to the user. Turn live updates off per editor with `realtime="off"`, or supply another source through the element's `realtime` property.
+
 ### Who can view and edit
 
 By default only the plan's owner can. Define the gates in your app to change that:
@@ -128,7 +140,8 @@ $plan->commands($user)
 
 ```bash
 composer serve          # demo app at http://127.0.0.1:8000 (/, /livewire, /vue, /react, /readonly)
-cd js && npm run demo   # build the /vue and /react demo bundles first
+vendor/bin/testbench reverb:start   # optional: live updates between demo tabs
+cd js && npm run demo   # build the demo bundles first (/vue, /react, and Echo for live updates)
 vendor/bin/pest         # PHP tests
 cd js && npm ci && npm test && npm run build
 ```

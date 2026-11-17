@@ -77,6 +77,10 @@ export class HttpTransport implements Transport {
 
     const csrf = this.options.csrfToken !== undefined ? this.options.csrfToken : readCsrfToken();
     if (csrf) headers['X-CSRF-TOKEN'] = csrf;
+
+    // Lets the server skip broadcasting this change back to this page.
+    const socketId = readEchoSocketId();
+    if (socketId) headers['X-Socket-ID'] = socketId;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
 
     let response: Response;
@@ -112,6 +116,15 @@ export class HttpTransport implements Transport {
     if (rejection) throw new RejectedError(rejection);
 
     throw new TransportError(data?.message ?? `Server error (${response.status})`, response.status);
+  }
+}
+
+function readEchoSocketId(): string | null {
+  try {
+    const echo = (globalThis as { Echo?: { socketId?: () => string | undefined } }).Echo;
+    return echo?.socketId?.() ?? null;
+  } catch {
+    return null;
   }
 }
 

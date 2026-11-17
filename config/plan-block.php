@@ -49,6 +49,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Realtime
+    |--------------------------------------------------------------------------
+    |
+    | Broadcast every saved change on a private channel per plan
+    | ("plan-block.plans.{ulid}"), so other tabs and devices update live.
+    | Needs Laravel broadcasting set up (e.g. Reverb or Pusher) and Laravel
+    | Echo on the page. Who may listen follows the "plan-block.view" gate.
+    |
+    | connection: queue connection for the broadcast job. null uses your
+    | default queue (needs a worker); "sync" sends during the request.
+    |
+    | max_payload: larger messages are sent without blocks and clients
+    | reload instead (Pusher limits messages to 10 KB).
+    |
+    */
+
+    'broadcasting' => [
+        'enabled' => env('PLAN_BLOCK_BROADCASTING', false),
+        'connection' => env('PLAN_BLOCK_BROADCAST_CONNECTION'),
+        'max_payload' => 8000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Limits
     |--------------------------------------------------------------------------
     */

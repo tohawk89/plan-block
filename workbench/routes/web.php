@@ -32,7 +32,7 @@ Route::middleware('web')->group(function () {
     Route::get('/demo/{file}', fn (string $file) => response()->file(
         dirname(__DIR__, 2)."/js/demo/dist/{$file}",
         ['Content-Type' => 'application/javascript'],
-    ))->whereIn('file', ['vue-demo.js', 'react-demo.js']);
+    ))->whereIn('file', ['vue-demo.js', 'react-demo.js', 'echo.js']);
 
     Route::get('/readonly', function () {
         Auth::login(User::query()->firstOrFail());
