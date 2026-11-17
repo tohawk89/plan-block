@@ -4,6 +4,8 @@ namespace Tohawk89\PlanBlock;
 
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\HtmlString;
 use Tohawk89\PlanBlock\Commands\CommandBus;
 use Tohawk89\PlanBlock\Commands\PendingCommands;
 use Tohawk89\PlanBlock\Models\Plan;
@@ -68,5 +70,50 @@ class PlanBlockManager
     public function tree(Plan $plan): PlanTree
     {
         return PlanTree::load($plan);
+    }
+
+    // ---- Assets ------------------------------------------------------------
+
+    /** @var array<string, string> */
+    protected array $assetHashes = [];
+
+    public function assetPath(string $file): string
+    {
+        return dirname(__DIR__).'/resources/dist/'.$file;
+    }
+
+    /**
+     * Short content hash, used as a cache-busting query string.
+     */
+    public function assetHash(string $file): string
+    {
+        return $this->assetHashes[$file] ??= substr((string) @md5_file($this->assetPath($file)), 0, 12);
+    }
+
+    public function assetUrl(string $file): string
+    {
+        return route('plan-block.assets', ['file' => $file, 'id' => $this->assetHash($file)]);
+    }
+
+    /**
+     * The <script> tag for @planBlockAssets. The component injects its own
+     * styles; pass ['css' => true] to also add a <link> (for no-styles setups
+     * that want the default sheet as a file).
+     *
+     * @param  array{nonce?: string|null, css?: bool}  $options
+     */
+    public function assets(array $options = []): HtmlString
+    {
+        // Reuse the app's CSP nonce when it uses Vite::useCspNonce().
+        $nonce = $options['nonce'] ?? (class_exists(\Illuminate\Foundation\Vite::class) ? Vite::cspNonce() : null);
+        $nonceAttr = $nonce ? ' nonce="'.e($nonce).'"' : '';
+
+        $html = '<script src="'.e($this->assetUrl('plan-block.js')).'" defer data-navigate-once'.$nonceAttr.'></script>';
+
+        if ($options['css'] ?? false) {
+            $html = '<link rel="stylesheet" href="'.e($this->assetUrl('plan-block.css')).'"'.$nonceAttr.'>'.$html;
+        }
+
+        return new HtmlString($html);
     }
 }

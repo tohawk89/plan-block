@@ -1,6 +1,6 @@
 import { PlanStore } from '../client/store';
 import { HttpTransport } from '../client/transport';
-import type { BlockData, CommandError, FieldManifest } from '../client/types';
+import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } from '../client/types';
 import { h } from './h';
 import { defaultLabels, type Labels } from './labels';
 import { parts, rendererFor, type RenderContext } from './renderers';
@@ -86,7 +86,13 @@ export class PlanBlockElement extends HTMLElement {
     if (!this.listening) this.listen();
 
     if (!this._store && this.getAttribute('plan')) {
-      void this.boot();
+      // If the script ran before the page finished parsing, the embedded
+      // data inside this element may not exist yet: wait for it.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.isConnected && !this._store && void this.boot(), { once: true });
+      } else {
+        void this.boot();
+      }
     } else {
       this.scheduleRender();
     }
@@ -126,6 +132,17 @@ export class PlanBlockElement extends HTMLElement {
     this._store = store;
     this.ownsStore = true;
     this.attachStore(store);
+
+    // Data embedded by <x-plan-block>: no requests needed.
+    const initial = this.readInitialData();
+    if (initial) {
+      store.hydrate(initial);
+      this.state = 'ready';
+      this.render();
+      this.emit('ready', { plan: store.plan });
+      return;
+    }
+
     this.state = 'loading';
     this.render();
 
@@ -140,6 +157,18 @@ export class PlanBlockElement extends HTMLElement {
       this.emit('error', { error: { reason: 'load_failed', message: error instanceof Error ? error.message : String(error) } });
     }
     this.render();
+  }
+
+  private readInitialData(): (PlanResponse & { manifest: Manifest }) | null {
+    const script = ownChildren(this, 'script[data-pb-initial]')[0];
+    if (!script?.textContent) return null;
+    try {
+      return JSON.parse(script.textContent);
+    } catch {
+      return null;
+    } finally {
+      script.remove();
+    }
   }
 
   private readonly onChange = () => {
@@ -211,6 +240,8 @@ export class PlanBlockElement extends HTMLElement {
   /** Renders now. Normally batched automatically. */
   render(): void {
     if (!this.container) {
+      // Replace the server-rendered copy from <x-plan-block>.
+      for (const node of ownChildren(this, '[data-pb-fallback]')) node.remove();
       this.container = h('div', { class: 'pb-root' });
       this.root.append(this.container);
     }
@@ -527,6 +558,11 @@ function syncChildren(parent: HTMLElement, children: HTMLElement[]): void {
   const current = parent.children;
   if (current.length === children.length && children.every((child, i) => current[i] === child)) return;
   parent.replaceChildren(...children);
+}
+
+/** Direct children matching a selector (no reliance on :scope support). */
+function ownChildren(el: Element, selector: string): HTMLElement[] {
+  return Array.from(el.children).filter((child): child is HTMLElement => child.matches(selector));
 }
 
 function toggleData(el: HTMLElement, name: string, on: boolean): void {

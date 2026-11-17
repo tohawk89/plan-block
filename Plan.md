@@ -46,7 +46,7 @@
 3. **Headless JS client.** Store, command dispatch, optimistic updates with rollback, linked-block sync. Renders nothing itself; framework wrappers bind to it.
 4. **Adapters.**
    - **Web component** `<plan-block plan="...">` — the universal default; works in Blade, Livewire, Inertia, Vue, React.
-   - **Blade adapter** — server-rendered, enhanced by the vanilla client.
+   - **Blade adapter** — `<x-plan-block :plan="$plan" />` outputs the web component with the plan's data embedded as JSON (no extra requests on load) and a read-only server-rendered copy from per-type Blade views (shown until the script loads and without JavaScript). Data is only embedded when the `plan-block.view` gate allows. `@planBlockAssets` adds the prebuilt script from a public, hash-versioned asset route (CSP nonce supported, reuses `Vite::cspNonce()`).
    - **Livewire adapter** — calls Actions directly in PHP and re-renders normally (no `wire:ignore` needed). `wire:ignore` is only needed when dropping the web component inside a Livewire view.
    - **Vue / React wrappers** — thin bindings over the headless client, built on demand.
 

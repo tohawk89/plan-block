@@ -1,7 +1,7 @@
 import '../src/web-component';
 import type { PlanBlockElement } from '../src/web-component/element';
 import { renderer } from '../src/web-component/renderers';
-import { FakeTransport, ids, makeStore, settle } from './helpers';
+import { FakeTransport, ids, makeStore, manifest, planResponse, settle } from './helpers';
 
 async function mount(options: { readonly?: boolean; transport?: FakeTransport } = {}) {
   const { store, transport } = await makeStore(options.transport ?? new FakeTransport(), null);
@@ -189,6 +189,27 @@ describe('<plan-block>', () => {
     await settle();
 
     expect(block(el, ids.museum)).toBe(before);
+  });
+
+  it('starts from data embedded by <x-plan-block>, without requests, and replaces the server copy', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const ready = vi.fn();
+    const el = document.createElement('plan-block') as PlanBlockElement;
+    el.setAttribute('plan', '01jd00000000000000000000p1');
+    el.addEventListener('plan-block:ready', ready);
+    el.innerHTML =
+      `<script type="application/json" data-pb-initial>${JSON.stringify({ ...planResponse(), manifest: manifest() })}</script>` +
+      '<div class="pb-root" data-pb-fallback>server copy</div>';
+
+    document.body.append(el);
+    await settle();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(ready).toHaveBeenCalledOnce();
+    expect(el.textContent).not.toContain('server copy');
+    expect(el.querySelector('script[data-pb-initial]')).toBeNull();
+    expect(block(el, ids.breakfast).textContent).toContain('Breakfast');
+    expect(el.store?.version).toBe(12);
   });
 
   it('shows a rejected command as an error toast', async () => {

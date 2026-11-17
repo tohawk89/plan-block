@@ -81,8 +81,8 @@ jobs:
       - name: Configure database
         run: |
           case "${{ matrix.db }}" in
-            mysql) echo "DB_CONNECTION=mysql" >> "$GITHUB_ENV"; echo "DB_PORT=3306" >> "$GITHUB_ENV"; echo "DB_USERNAME=root" >> "$GITHUB_ENV"; echo "DB_PASSWORD=" >> "$GITHUB_ENV" ;;
-            pgsql) echo "DB_CONNECTION=pgsql" >> "$GITHUB_ENV"; echo "DB_PORT=5432" >> "$GITHUB_ENV"; echo "DB_USERNAME=postgres" >> "$GITHUB_ENV"; echo "DB_PASSWORD=postgres" >> "$GITHUB_ENV" ;;
+            mysql) echo "PLAN_BLOCK_TEST_DB=mysql" >> "$GITHUB_ENV"; echo "DB_PORT=3306" >> "$GITHUB_ENV"; echo "DB_USERNAME=root" >> "$GITHUB_ENV"; echo "DB_PASSWORD=" >> "$GITHUB_ENV" ;;
+            pgsql) echo "PLAN_BLOCK_TEST_DB=pgsql" >> "$GITHUB_ENV"; echo "DB_PORT=5432" >> "$GITHUB_ENV"; echo "DB_USERNAME=postgres" >> "$GITHUB_ENV"; echo "DB_PASSWORD=postgres" >> "$GITHUB_ENV" ;;
           esac
           echo "DB_HOST=127.0.0.1" >> "$GITHUB_ENV"
           echo "DB_DATABASE=plan_block" >> "$GITHUB_ENV"

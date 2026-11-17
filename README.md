@@ -10,7 +10,76 @@ A Notion-style block system for Laravel, built for flexible itineraries and back
 - Checkbox progress for items, days and pools
 - Works with Blade, Livewire, or any JS framework
 
-> **Status:** in design. Not ready for use yet. See [Plan.md](Plan.md) for the full specification.
+> **Status:** in development, not released yet. See [Plan.md](Plan.md) for the full specification.
+
+## Quick start (Blade)
+
+Requires PHP 8.3+ and Laravel 12+.
+
+```bash
+composer require tohawk89/plan-block
+php artisan migrate
+```
+
+Let a model own plans:
+
+```php
+use Tohawk89\PlanBlock\Concerns\HasPlans;
+
+class User extends Authenticatable
+{
+    use HasPlans;
+}
+
+$plan = $user->createPlan('Trip to JB', '2026-12-01');
+```
+
+Show the editor. No npm needed: the package serves its own script.
+
+```blade
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @planBlockAssets
+</head>
+<body>
+    <x-plan-block :plan="$plan" />
+</body>
+```
+
+The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Options: `readonly`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
+
+### Who can view and edit
+
+By default only the plan's owner can. Define the gates in your app to change that:
+
+```php
+use Tohawk89\PlanBlock\Models\Plan;
+
+// e.g. in AppServiceProvider::boot()
+Gate::define('plan-block.view', fn ($user, Plan $plan) => $plan->owner->is($user) || $user->is_admin);
+Gate::define('plan-block.edit', fn ($user, Plan $plan) => $plan->owner->is($user));
+```
+
+### Changing plans from PHP
+
+```php
+use Tohawk89\PlanBlock\Commands\PendingCommands;
+
+$plan->commands($user)
+    ->create('timeline', id: $day = PendingCommands::newId())
+    ->create('place', $day, payload: ['name' => 'Breakfast', 'time' => '08:00'])
+    ->run();
+```
+
+## Local development
+
+```bash
+composer serve          # demo app (Testbench workbench) at http://127.0.0.1:8000
+vendor/bin/pest         # PHP tests
+cd js && npm ci && npm test && npm run build
+```
+
+After changing anything in `js/src`, run `npm run build` and commit `resources/dist` (CI checks it is up to date).
 
 ## License
 

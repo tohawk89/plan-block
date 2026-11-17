@@ -3,7 +3,14 @@
     "description": "Notion-style block system for Laravel: flexible itineraries, backup plans and linked checklists. Works with Blade, Livewire or any JS framework.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["laravel", "blocks", "itinerary", "planner", "checklist", "livewire"],
+    "keywords": [
+        "laravel",
+        "blocks",
+        "itinerary",
+        "planner",
+        "checklist",
+        "livewire"
+    ],
     "authors": [
         {
             "name": "Nazar"
@@ -29,7 +36,9 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tohawk89\\PlanBlock\\Tests\\": "tests/"
+            "Tohawk89\\PlanBlock\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/",
+            "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
         }
     },
     "extra": {
@@ -43,7 +52,19 @@
         }
     },
     "scripts": {
-        "test": "pest"
+        "test": "pest",
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "clear": "@php vendor/bin/testbench package:purge-skeleton --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": "@php vendor/bin/testbench workbench:build --ansi",
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ]
     },
     "config": {
         "sort-packages": true,

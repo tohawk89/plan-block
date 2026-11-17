@@ -14,11 +14,18 @@ abstract class TestCase extends Orchestra
         return [PlanBlockServiceProvider::class];
     }
 
+    /**
+     * Pin everything tests depend on, so testbench.yaml (the demo app's
+     * settings) never leaks in. In particular the tests must never touch
+     * the demo database.
+     */
     protected function defineEnvironment($app): void
     {
-        // SQLite in memory by default; CI sets DB_CONNECTION=mysql|pgsql
+        // SQLite in memory by default; CI sets PLAN_BLOCK_TEST_DB=mysql|pgsql
         // plus DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD.
-        $app['config']->set('database.default', env('DB_CONNECTION', 'testing'));
+        $app['config']->set('database.default', getenv('PLAN_BLOCK_TEST_DB') ?: 'testing');
+        $app['config']->set('app.url', 'http://localhost');
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
+        $app['config']->set('session.driver', 'array');
     }
 }

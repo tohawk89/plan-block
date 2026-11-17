@@ -10,6 +10,7 @@ import type {
   DeleteImpact,
   Manifest,
   PlanData,
+  PlanResponse,
   TypeManifest,
 } from './types';
 import { ulid } from './ulid';
@@ -72,9 +73,17 @@ export class PlanStore extends EventTarget {
 
   async load(): Promise<void> {
     const [response, manifest] = await Promise.all([this.options.transport.loadPlan(), this.options.transport.loadManifest()]);
-    this.plan = response.plan;
-    this.manifest = manifest;
-    this.confirmed = new Map(response.blocks.map((b) => [b.id, b]));
+    this.hydrate({ ...response, manifest });
+  }
+
+  /**
+   * Start from data the server already put in the page (e.g. by the Blade
+   * component), without any requests.
+   */
+  hydrate(data: PlanResponse & { manifest: Manifest }): void {
+    this.plan = data.plan;
+    this.manifest = data.manifest;
+    this.confirmed = new Map(data.blocks.map((b) => [b.id, b]));
     this.pending = this.restoreQueue();
     this.recompute();
     this.emit('change');

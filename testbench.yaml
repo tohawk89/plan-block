@@ -1,0 +1,27 @@
+# Local demo app: vendor/bin/testbench workbench:build && vendor/bin/testbench serve
+laravel: '@testbench'
+
+env:
+  - APP_DEBUG=true
+  - DB_CONNECTION=sqlite
+  - SESSION_DRIVER=file
+  - AUTH_MODEL=Workbench\App\Models\User
+
+providers:
+  - Tohawk89\PlanBlock\PlanBlockServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
+
+migrations:
+  - vendor/orchestra/testbench-core/laravel/migrations
+
+workbench:
+  start: '/'
+  discovers:
+    web: true
+    views: true
+  build:
+    - create-sqlite-db
+    - db-wipe
+    - migrate-fresh:
+        --seed: true
+        --seeder: Workbench\Database\Seeders\DatabaseSeeder
