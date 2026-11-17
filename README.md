@@ -54,7 +54,7 @@ The component embeds the plan's data, so the editor appears without extra reques
 <livewire:plan-block :plan="$plan" />
 ```
 
-Same editor, but changes go through the Livewire component (your Livewire session and middleware) straight to the package's command code. Works with Livewire 3.6.4+ and 4. Apps that only use Livewire can turn the JSON API off with `plan-block.routes.enabled = false`.
+Same editor, but changes go through the Livewire component (your Livewire session and middleware) straight to the package's command code. Works with Livewire 3.8.3+ and 4.4.8+ (earlier releases have open security advisories). Apps that only use Livewire can turn the JSON API off with `plan-block.routes.enabled = false`.
 
 Other components can react to edits, and PHP code can tell the editor to reload:
 
