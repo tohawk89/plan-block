@@ -48,6 +48,25 @@ Show the editor. No npm needed: the package serves its own script.
 
 The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Options: `readonly`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
 
+### Livewire
+
+```blade
+<livewire:plan-block :plan="$plan" />
+```
+
+Same editor, but changes go through the Livewire component (your Livewire session and middleware) straight to the package's command code. Works with Livewire 3.6.4+ and 4. Apps that only use Livewire can turn the JSON API off with `plan-block.routes.enabled = false`.
+
+Other components can react to edits, and PHP code can tell the editor to reload:
+
+```php
+#[On('plan-block-changed')]            // fired after every saved change
+public function refreshTotals(string $plan, int $version) { /* ... */ }
+
+$this->dispatch('plan-block-refresh', plan: $plan->ulid);   // after changing a plan in PHP
+```
+
+To react on the server, extend `Tohawk89\PlanBlock\Livewire\PlanBlockEditor`, override `changed()`, and register your class as `plan-block`.
+
 ### Who can view and edit
 
 By default only the plan's owner can. Define the gates in your app to change that:
@@ -74,7 +93,7 @@ $plan->commands($user)
 ## Local development
 
 ```bash
-composer serve          # demo app (Testbench workbench) at http://127.0.0.1:8000
+composer serve          # demo app at http://127.0.0.1:8000 (/, /livewire, /readonly)
 vendor/bin/pest         # PHP tests
 cd js && npm ci && npm test && npm run build
 ```

@@ -2,6 +2,7 @@
 
 namespace Tohawk89\PlanBlock\Tests;
 
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\Attributes\WithMigration;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Tohawk89\PlanBlock\PlanBlockServiceProvider;
@@ -11,7 +12,8 @@ abstract class TestCase extends Orchestra
 {
     protected function getPackageProviders($app): array
     {
-        return [PlanBlockServiceProvider::class];
+        // Livewire first, as package discovery would load it in a real app.
+        return [LivewireServiceProvider::class, PlanBlockServiceProvider::class];
     }
 
     /**

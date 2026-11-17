@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Tohawk89\PlanBlock\Commands\CommandBus;
+use Tohawk89\PlanBlock\Livewire\PlanBlockEditor;
 use Tohawk89\PlanBlock\Models\Plan;
 use Tohawk89\PlanBlock\Support\Ordering;
 use Tohawk89\PlanBlock\Types\BlockTypeRegistry;
@@ -47,20 +48,34 @@ class PlanBlockServiceProvider extends ServiceProvider
 
         $this->app->make(BlockTypeRegistry::class)->register(config('plan-block.types', []));
 
-        if (config('plan-block.routes.enabled', true)) {
-            $prefix = config('plan-block.routes.prefix', 'plan-block');
+        $prefix = config('plan-block.routes.prefix', 'plan-block');
 
+        // The JSON API. Livewire-only apps may disable it.
+        if (config('plan-block.routes.enabled', true)) {
             Route::group([
                 'prefix' => $prefix,
                 'middleware' => config('plan-block.routes.middleware', ['web', 'auth']),
                 'as' => 'plan-block.',
             ], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/plan-block.php'));
-
-            Route::group(['prefix' => $prefix, 'as' => 'plan-block.'], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/assets.php'));
         }
 
+        // Static assets for @planBlockAssets: always available.
+        Route::group(['prefix' => $prefix, 'as' => 'plan-block.'], fn () => $this->loadRoutesFrom(__DIR__.'/../routes/assets.php'));
+
         $this->registerBlade();
+        $this->registerLivewire();
         $this->defineDefaultGates();
+    }
+
+    /**
+     * <livewire:plan-block :plan="$plan" />, only when Livewire is installed
+     * and its service provider is loaded.
+     */
+    protected function registerLivewire(): void
+    {
+        if (class_exists(\Livewire\LivewireManager::class) && $this->app->bound(\Livewire\LivewireManager::class)) {
+            $this->app->make(\Livewire\LivewireManager::class)->component('plan-block', PlanBlockEditor::class);
+        }
     }
 
     protected function registerBlade(): void

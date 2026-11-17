@@ -13,6 +13,12 @@ Route::middleware('web')->group(function () {
         return view('plan', ['plan' => Plan::query()->firstOrFail()]);
     });
 
+    Route::get('/livewire', function () {
+        Auth::login(User::query()->firstOrFail());
+
+        return view('livewire-plan', ['plan' => Plan::query()->firstOrFail()]);
+    });
+
     Route::get('/readonly', function () {
         Auth::login(User::query()->firstOrFail());
 

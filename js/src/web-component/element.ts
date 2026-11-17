@@ -1,5 +1,6 @@
 import { PlanStore } from '../client/store';
-import { HttpTransport } from '../client/transport';
+import { LivewireTransport, type LivewireWire } from '../client/livewire-transport';
+import { HttpTransport, type Transport } from '../client/transport';
 import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } from '../client/types';
 import { h } from './h';
 import { defaultLabels, type Labels } from './labels';
@@ -79,6 +80,7 @@ export class PlanBlockElement extends HTMLElement {
   }
 
   connectedCallback(): void {
+    window.addEventListener('plan-block-refresh', this.onRefresh);
     if (this.hasAttribute('shadow') && !this.shadowRoot) {
       this.root = this.attachShadow({ mode: 'open' });
     }
@@ -99,6 +101,7 @@ export class PlanBlockElement extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    window.removeEventListener('plan-block-refresh', this.onRefresh);
     if (this.ownsStore) {
       this._store?.destroy();
       this.detachStore();
@@ -126,9 +129,7 @@ export class PlanBlockElement extends HTMLElement {
     const plan = this.getAttribute('plan');
     if (!plan) return;
 
-    const store = new PlanStore({
-      transport: new HttpTransport({ endpoint: this.getAttribute('endpoint') ?? '/plan-block', plan }),
-    });
+    const store = new PlanStore({ transport: this.createTransport(plan) });
     this._store = store;
     this.ownsStore = true;
     this.attachStore(store);
@@ -158,6 +159,33 @@ export class PlanBlockElement extends HTMLElement {
     }
     this.render();
   }
+
+  /**
+   * transport="livewire": commands go through the enclosing
+   * <livewire:plan-block> component. Otherwise the JSON API.
+   */
+  private createTransport(plan: string): Transport {
+    if (this.getAttribute('transport') === 'livewire') {
+      let host: Element | null = this.parentElement;
+      while (host && !host.hasAttribute('wire:id')) host = host.parentElement;
+      const id = host?.getAttribute('wire:id') ?? '';
+      return new LivewireTransport(() => waitForLivewire(id));
+    }
+
+    return new HttpTransport({ endpoint: this.getAttribute('endpoint') ?? '/plan-block', plan });
+  }
+
+  /**
+   * Reload when the server says the plan changed elsewhere, e.g. from PHP:
+   * $this->dispatch('plan-block-refresh', plan: $plan->ulid).
+   */
+  private readonly onRefresh = (event: Event) => {
+    const detail = (event as CustomEvent).detail;
+    const plan = Array.isArray(detail) ? detail[0]?.plan : detail?.plan;
+    if (this._store?.plan && (!plan || plan === this._store.plan.id)) {
+      void this._store.reload().catch(() => this.showToast({ message: this._labels.loadFailed, kind: 'error' }));
+    }
+  };
 
   private readInitialData(): (PlanResponse & { manifest: Manifest }) | null {
     const script = ownChildren(this, 'script[data-pb-initial]')[0];
@@ -558,6 +586,41 @@ function syncChildren(parent: HTMLElement, children: HTMLElement[]): void {
   const current = parent.children;
   if (current.length === children.length && children.every((child, i) => current[i] === child)) return;
   parent.replaceChildren(...children);
+}
+
+interface LivewireGlobal {
+  find(id: string): LivewireWire | undefined;
+}
+
+/**
+ * Resolves the $wire of a Livewire component, waiting if Livewire has not
+ * started yet (its script often runs after ours) or after wire:navigate.
+ */
+function waitForLivewire(id: string, timeoutMs = 10000): Promise<LivewireWire> {
+  const find = () => (window as unknown as { Livewire?: LivewireGlobal }).Livewire?.find(id);
+
+  return new Promise((resolve, reject) => {
+    const found = find();
+    if (found) return resolve(found);
+
+    const started = Date.now();
+    const check = () => {
+      const wire = find();
+      if (wire) {
+        cleanup();
+        resolve(wire);
+      } else if (Date.now() - started > timeoutMs) {
+        cleanup();
+        reject(new Error(`Livewire component ${id || '(none)'} not found. Is <plan-block transport="livewire"> inside <livewire:plan-block>?`));
+      }
+    };
+    const timer = setInterval(check, 50);
+    const cleanup = () => {
+      clearInterval(timer);
+      document.removeEventListener('livewire:initialized', check);
+    };
+    document.addEventListener('livewire:initialized', check);
+  });
 }
 
 /** Direct children matching a selector (no reliance on :scope support). */

@@ -8,6 +8,7 @@ env:
   - AUTH_MODEL=Workbench\App\Models\User
 
 providers:
+  - Livewire\LivewireServiceProvider
   - Tohawk89\PlanBlock\PlanBlockServiceProvider
   - Workbench\App\Providers\WorkbenchServiceProvider
 

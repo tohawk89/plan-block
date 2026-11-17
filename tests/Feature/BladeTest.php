@@ -5,26 +5,6 @@ use Illuminate\Support\Facades\View;
 use Tohawk89\PlanBlock\Facades\PlanBlock;
 use Tohawk89\PlanBlock\PlanBlockManager;
 
-function samplePlan(): array
-{
-    $owner = makeUser();
-    $plan = $owner->createPlan('Trip to JB', '2026-12-01');
-    $ids = ['day' => id(), 'breakfast' => id(), 'backup' => id(), 'pool' => id(), 'museum' => id(), 'day2' => id()];
-
-    $plan->commands()
-        ->create('timeline', id: $ids['day'])
-        ->create('place', $ids['day'], payload: ['name' => 'Breakfast <b>', 'time' => '08:00'], id: $ids['breakfast'])
-        ->create('backup', $ids['breakfast'], payload: ['name' => 'Backup cafe'], id: $ids['backup'])
-        ->create('pool', after: $ids['day'], id: $ids['pool'])
-        ->create('place', $ids['pool'], payload: ['name' => 'Museum'], id: $ids['museum'])
-        ->create('timeline', after: $ids['pool'], id: $ids['day2'])
-        ->link($ids['museum'], $ids['day2'])
-        ->check($ids['backup'])
-        ->run();
-
-    return [$owner, $plan->fresh(), $ids];
-}
-
 /** The JSON embedded in the rendered component. */
 function embedded(string $html): array
 {

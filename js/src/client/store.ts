@@ -90,6 +90,20 @@ export class PlanStore extends EventTarget {
     if (this.pending.length) this.scheduleFlush();
   }
 
+  /**
+   * Fetch the plan again (e.g. after it changed elsewhere), keeping any
+   * unsent local changes on top.
+   */
+  async reload(): Promise<void> {
+    const [response, manifest] = await Promise.all([this.options.transport.loadPlan(), this.options.transport.loadManifest()]);
+    if (this.destroyed) return;
+    this.plan = response.plan;
+    this.manifest = manifest;
+    this.confirmed = new Map(response.blocks.map((b) => [b.id, b]));
+    this.recompute();
+    this.emit('change');
+  }
+
   destroy(): void {
     this.destroyed = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);

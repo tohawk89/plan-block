@@ -24,7 +24,8 @@ return [
     |
     | The JSON API used by the JS client and web component. Access is checked
     | with the "plan-block.view" and "plan-block.edit" gates, which your app
-    | should define (see README).
+    | should define (see README). Apps that only use <livewire:plan-block>
+    | can disable it. The asset route for @planBlockAssets always stays on.
     |
     */
 
