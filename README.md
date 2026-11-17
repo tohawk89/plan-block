@@ -10,7 +10,7 @@ A Notion-style block system for Laravel, built for flexible itineraries and back
 - Checkbox progress for items, days and pools
 - Works with Blade, Livewire, or any JS framework
 
-> **Status:** in development, not released yet. See [Plan.md](Plan.md) for the full specification.
+> **Status:** early release (0.x). It works and is tested on PHP 8.3 to 8.5, Laravel 12 and 13, and SQLite, MySQL and PostgreSQL, but the API may still change before 1.0. See [CHANGELOG.md](CHANGELOG.md) and the [full specification](https://github.com/tohawk89/plan-block/blob/main/Plan.md).
 
 ## Quick start (Blade)
 

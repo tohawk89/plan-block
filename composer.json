@@ -11,6 +11,11 @@
         "checklist",
         "livewire"
     ],
+    "homepage": "https://github.com/tohawk89/plan-block",
+    "support": {
+        "issues": "https://github.com/tohawk89/plan-block/issues",
+        "source": "https://github.com/tohawk89/plan-block"
+    },
     "authors": [
         {
             "name": "Nazar"

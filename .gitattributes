@@ -1,2 +1,15 @@
 # Built assets are generated; hide them from diffs and GitHub language stats.
+# (They ARE shipped: Blade and Livewire users need them without npm.)
 /resources/dist/** linguist-generated=true -diff
+
+# Keep development files out of the package Composer downloads.
+/.github            export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/contract           export-ignore
+/js                 export-ignore
+/tests              export-ignore
+/workbench          export-ignore
+/phpunit.xml        export-ignore
+/testbench.yaml     export-ignore
+/Plan.md            export-ignore

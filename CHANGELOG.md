@@ -1,0 +1,32 @@
+# Changelog
+
+All notable changes to this package are listed here. Versions follow
+[Semantic Versioning](https://semver.org); while below 1.0, minor versions
+may contain breaking changes.
+
+## 0.1.0 - 2026-11-18
+
+First release.
+
+### Plans and blocks
+- Days (timeline), pools (sandbox), places, backups, notes and links, in one table with nesting and gapped ordering.
+- Checkbox model: individual blocks are checked; days are done when all items are ("all"), places when they or any backup are ("any"), pools show progress only ("count"). Items can be excluded from counting.
+- Links to individual blocks or whole groups, with one source of truth; linking a link stores the original; cycles are rejected.
+- Delete removes a block, its children and every link to it, with a warning listing where it also appears, and can be restored as one batch.
+- Custom block types with a small field DSL (validation and auto-generated edit forms), placement rules, check guards and per-adapter renderers. Days, pools and links are locked.
+
+### Saving
+- One command API for every frontend (`create`, `update`, `move`, `check`, `uncheck`, `check_all`, `uncheck_all`, `exclude`, `include`, `link`, `delete`, `restore`), run in a transaction per batch with plan versioning.
+- JSON endpoints, gated by `plan-block.view` and `plan-block.edit`, and a fluent PHP API: `$plan->commands($user)->check($block)->run()`.
+
+### Frontends
+- `<plan-block>` web component with no dependencies: optimistic updates, batching, rollback of rejected commands, offline retry queue that survives reloads and works across tabs, drag-and-drop reordering (mouse, touch, pen, keyboard), Shadow DOM option, custom renderers and labels.
+- Blade: `@planBlockAssets` (no npm needed) and `<x-plan-block>` with embedded data and a server-rendered fallback.
+- Livewire 3.8.3+ and 4.4.8+: `<livewire:plan-block>`, with `plan-block-changed` and `plan-block-refresh` events.
+- Vue 3.3+ and React 18/19 wrappers, plus `usePlanStore()` / `usePlanSnapshot()` for custom UIs, and `PlanBlock::initialData()` for Inertia props. (JS package not yet published to npm.)
+
+### Realtime
+- Optional live updates through Laravel broadcasting (Reverb, Pusher) and Echo, on a private channel per plan, with automatic catch-up after missed messages.
+
+### Requirements
+- PHP 8.3+, Laravel 12 or 13. Tested on SQLite, MySQL 8.4 and PostgreSQL 17.
