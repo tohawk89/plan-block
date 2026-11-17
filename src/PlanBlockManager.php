@@ -72,6 +72,26 @@ class PlanBlockManager
         return PlanTree::load($plan);
     }
 
+    /**
+     * Plan, blocks and manifest in the shape the JS client starts from.
+     * Pass it as a prop (e.g. Inertia) to show the editor without requests:
+     *
+     *   Gate::authorize('plan-block.view', $plan);
+     *   return Inertia::render('Trip', ['planBlock' => PlanBlock::initialData($plan)]);
+     *
+     * Does not check permissions: authorize before exposing it.
+     */
+    public function initialData(Plan $plan, ?PlanTree $tree = null): array
+    {
+        $tree ??= PlanTree::load($plan);
+
+        return [
+            'plan' => $tree->serializePlan(),
+            'blocks' => $tree->serializeAll(),
+            'manifest' => $this->manifest(),
+        ];
+    }
+
     // ---- Assets ------------------------------------------------------------
 
     /** @var array<string, string> */

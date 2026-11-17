@@ -67,6 +67,40 @@ $this->dispatch('plan-block-refresh', plan: $plan->ulid);   // after changing a 
 
 To react on the server, extend `Tohawk89\PlanBlock\Livewire\PlanBlockEditor`, override `changed()`, and register your class as `plan-block`.
 
+### Vue, React and Inertia
+
+The JS package (published to npm later; for now from this repo's `js/` folder) has thin wrappers around the same editor. Pass the plan's data as a prop to show it without requests:
+
+```php
+// Controller (authorize first: initialData() does not check permissions)
+Gate::authorize('plan-block.view', $plan);
+
+return Inertia::render('Trip', ['planBlock' => PlanBlock::initialData($plan)]);
+```
+
+```vue
+<script setup>
+import { PlanBlock } from 'plan-block/vue'
+defineProps(['planBlock'])
+</script>
+
+<template>
+  <PlanBlock :initial="planBlock" @command="(c) => console.log(c.type)" />
+</template>
+```
+
+```jsx
+import { PlanBlock } from 'plan-block/react'
+
+export default function Trip({ planBlock }) {
+  return <PlanBlock initial={planBlock} onError={(e) => alert(e.message)} />
+}
+```
+
+Props: `initial` or `plan` (ULID), `endpoint`, `readonly`, `shadow`, `noStyles`, `labels`, `store`, `transport`. Events: `ready`, `command`, `error`, `sync`. React 18 and 19, Vue 3.3+.
+
+For a completely custom UI, use the headless store directly: `usePlanStore({ initial })` returns the store and a live snapshot (`usePlanSnapshot(store)` for an existing store). Call `store.check(id)`, `store.move(id, { parent, after })` and so on; changes appear instantly and are saved in the background.
+
 ### Who can view and edit
 
 By default only the plan's owner can. Define the gates in your app to change that:
@@ -93,7 +127,8 @@ $plan->commands($user)
 ## Local development
 
 ```bash
-composer serve          # demo app at http://127.0.0.1:8000 (/, /livewire, /readonly)
+composer serve          # demo app at http://127.0.0.1:8000 (/, /livewire, /vue, /react, /readonly)
+cd js && npm run demo   # build the /vue and /react demo bundles first
 vendor/bin/pest         # PHP tests
 cd js && npm ci && npm test && npm run build
 ```

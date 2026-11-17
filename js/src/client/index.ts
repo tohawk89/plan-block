@@ -1,5 +1,5 @@
-export { PlanStore } from './store';
-export type { PlanStoreOptions, CreateOptions, MoveOptions, SyncState } from './store';
+export { PlanStore, createPlanStore } from './store';
+export type { PlanStoreOptions, CreateOptions, MoveOptions, SyncState, PlanSnapshot, InitialData, CreatePlanStoreOptions } from './store';
 export { HttpTransport, RejectedError, TransportError } from './transport';
 export type { Transport, HttpTransportOptions } from './transport';
 export { LivewireTransport } from './livewire-transport';

@@ -2,7 +2,7 @@
   "name": "plan-block",
   "version": "0.0.0",
   "private": true,
-  "description": "Headless JS client and <plan-block> web component for the Plan Block Laravel package.",
+  "description": "Headless JS client, <plan-block> web component, and Vue and React wrappers for the Plan Block Laravel package.",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -13,19 +13,53 @@
     "./web-component": {
       "types": "./dist/web-component/index.d.ts",
       "import": "./dist/web-component.js"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/web-component.js",
+    "./dist/vue.js",
+    "./dist/react.js",
+    "./dist/chunk-*.js"
+  ],
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "demo": "node demo/build.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vue": "^3.3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "esbuild": "^0.25.0",
     "happy-dom": "^18.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "vue": "^3.5.45"
   }
 }

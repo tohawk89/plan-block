@@ -1,5 +1,5 @@
 import { applyCommand, childrenOf, resolve, type BlockMap } from './optimistic';
-import { RejectedError, TransportError, type Transport } from './transport';
+import { HttpTransport, RejectedError, TransportError, type Transport } from './transport';
 import type {
   BlockData,
   BlockId,
@@ -108,6 +108,33 @@ export class PlanStore extends EventTarget {
     this.destroyed = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);
     if (typeof window !== 'undefined') window.removeEventListener('online', this.onOnline);
+  }
+
+  // ---- Subscribing (framework adapters) --------------------------------
+
+  private snapshotCache: PlanSnapshot | null = null;
+
+  /**
+   * Calls `listener` whenever state or sync status changes. Returns an
+   * unsubscribe function. Shape matches React's useSyncExternalStore.
+   */
+  subscribe(listener: () => void): () => void {
+    this.addEventListener('change', listener);
+    this.addEventListener('sync', listener);
+    return () => {
+      this.removeEventListener('change', listener);
+      this.removeEventListener('sync', listener);
+    };
+  }
+
+  /** An immutable view of the state; a new object only after a change. */
+  getSnapshot(): PlanSnapshot {
+    return (this.snapshotCache ??= {
+      plan: this.plan,
+      blocks: this.all(),
+      syncState: this.syncState,
+      pendingCount: this.pendingCount,
+    });
   }
 
   // ---- Reading ---------------------------------------------------------
@@ -368,8 +395,45 @@ export class PlanStore extends EventTarget {
   }
 
   private emit(type: string, detail: Record<string, unknown> = {}): void {
+    if (type === 'change' || type === 'sync') this.snapshotCache = null;
     this.dispatchEvent(new CustomEvent(type, { detail }));
   }
+}
+
+export interface PlanSnapshot {
+  plan: PlanData | null;
+  blocks: BlockData[];
+  syncState: SyncState;
+  pendingCount: number;
+}
+
+/** Plan, blocks and manifest as embedded by the server (Blade, Inertia props). */
+export type InitialData = PlanResponse & { manifest: Manifest };
+
+export interface CreatePlanStoreOptions {
+  /** Plan ULID (needed for the HTTP transport). */
+  plan?: string;
+  /** API route prefix. Default "/plan-block". */
+  endpoint?: string;
+  /** Custom transport; overrides plan/endpoint. */
+  transport?: Transport;
+  storage?: PlanStoreOptions['storage'];
+}
+
+/** A store using the given transport, or the JSON API for `plan`. */
+export function createPlanStore(options: CreatePlanStoreOptions): PlanStore {
+  const transport =
+    options.transport ??
+    new HttpTransport({
+      endpoint: options.endpoint ?? '/plan-block',
+      plan: options.plan ?? '',
+    });
+
+  if (!options.transport && !options.plan) {
+    throw new Error('createPlanStore needs a plan ULID or a transport.');
+  }
+
+  return new PlanStore({ transport, ...(options.storage !== undefined ? { storage: options.storage } : {}) });
 }
 
 function safeLocalStorage(): Storage | null {

@@ -71,6 +71,15 @@ describe('<x-plan-block>', function () {
             ]), true));
     });
 
+    it('embeds the same data PlanBlock::initialData() gives (e.g. for Inertia props)', function () {
+        [$owner, $plan] = samplePlan();
+        $this->actingAs($owner);
+
+        $html = Blade::render('<x-plan-block :plan="$plan" />', ['plan' => $plan]);
+
+        expect(embedded($html))->toEqual(json_decode(json_encode(PlanBlock::initialData($plan)), true));
+    });
+
     it('escapes embedded JSON so it cannot close the script tag', function () {
         [$owner, $plan, $ids] = samplePlan();
         $plan->commands()->update($ids['breakfast'], ['notes' => '</script><script>alert(1)</script>'])->run();

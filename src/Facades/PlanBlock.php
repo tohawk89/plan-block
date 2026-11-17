@@ -12,6 +12,7 @@ use Tohawk89\PlanBlock\PlanBlockManager;
  * @method static array manifest()
  * @method static \Tohawk89\PlanBlock\Commands\PendingCommands commands(\Tohawk89\PlanBlock\Models\Plan $plan, ?\Illuminate\Contracts\Auth\Authenticatable $user = null)
  * @method static \Tohawk89\PlanBlock\Support\PlanTree tree(\Tohawk89\PlanBlock\Models\Plan $plan)
+ * @method static array initialData(\Tohawk89\PlanBlock\Models\Plan $plan, ?\Tohawk89\PlanBlock\Support\PlanTree $tree = null)
  *
  * @see PlanBlockManager
  */

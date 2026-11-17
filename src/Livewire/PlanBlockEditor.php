@@ -101,13 +101,8 @@ class PlanBlockEditor extends Component
 
         $plan = $this->plan();
         Gate::authorize('plan-block.view', $plan);
-        $tree = $plan->tree();
 
-        return [
-            'plan' => $tree->serializePlan(),
-            'blocks' => $tree->serializeAll(),
-            'manifest' => app(PlanBlockManager::class)->manifest(),
-        ];
+        return app(PlanBlockManager::class)->initialData($plan);
     }
 
     public function render(): View

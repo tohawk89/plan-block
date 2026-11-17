@@ -55,13 +55,7 @@ class PlanBlockComponent extends Component
      */
     public function initialJson(): HtmlString
     {
-        $tree = $this->tree();
-
-        return new HtmlString(json_encode([
-            'plan' => $tree->serializePlan(),
-            'blocks' => $tree->serializeAll(),
-            'manifest' => app(PlanBlockManager::class)->manifest(),
-        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        return new HtmlString(json_encode(app(PlanBlockManager::class)->initialData($this->model, $this->tree()), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
 
     public function fallbackHtml(): HtmlString

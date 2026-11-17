@@ -1,4 +1,4 @@
-import { PlanStore } from '../client/store';
+import { PlanStore, type InitialData } from '../client/store';
 import { LivewireTransport, type LivewireWire } from '../client/livewire-transport';
 import { HttpTransport, type Transport } from '../client/transport';
 import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } from '../client/types';
@@ -77,7 +77,7 @@ export class PlanBlockElement extends HTMLElement {
     this.scheduleRender();
   }
 
-  get readonly(): boolean {
+  get isReadOnly(): boolean {
     return this.hasAttribute('readonly');
   }
 
@@ -132,18 +132,36 @@ export class PlanBlockElement extends HTMLElement {
     const plan = this.getAttribute('plan');
     if (!plan) return;
 
-    const store = new PlanStore({ transport: this.createTransport(plan) });
+    // Data embedded by <x-plan-block> means no requests are needed.
+    await this.useStore(new PlanStore({ transport: this.createTransport(plan) }), {
+      initial: this.readInitialData() ?? undefined,
+      owned: true,
+    });
+  }
+
+  /**
+   * Show this store: start from `initial` data if given, otherwise load it
+   * (showing loading and failure states). Used by the Vue and React
+   * wrappers. With `owned`, the element destroys the store when removed.
+   */
+  async useStore(store: PlanStore, options: { initial?: InitialData; owned?: boolean } = {}): Promise<void> {
+    if (this._store && this._store !== store && this.ownsStore) this._store.destroy();
+    this.detachStore();
     this._store = store;
-    this.ownsStore = true;
+    this.ownsStore = options.owned ?? false;
     this.attachStore(store);
 
-    // Data embedded by <x-plan-block>: no requests needed.
-    const initial = this.readInitialData();
-    if (initial) {
-      store.hydrate(initial);
+    if (options.initial) {
+      store.hydrate(options.initial);
       this.state = 'ready';
       this.render();
       this.emit('ready', { plan: store.plan });
+      return;
+    }
+
+    if (store.plan) {
+      this.state = 'ready';
+      this.render();
       return;
     }
 
@@ -301,7 +319,7 @@ export class PlanBlockElement extends HTMLElement {
     const list = this.ensure('list', () => h('div', { class: 'pb-list' }));
     syncChildren(list, top.length ? top : [h('div', { class: 'pb-empty' }, labels.empty)]);
 
-    const toolbar = this.readonly
+    const toolbar = this.isReadOnly
       ? null
       : this.ensure('toolbar', () =>
           h(
@@ -406,7 +424,7 @@ export class PlanBlockElement extends HTMLElement {
       block,
       isLink ? target : null,
       editing,
-      this.readonly,
+      this.isReadOnly,
       // Controls whose availability depends on siblings or days.
       block.parent ? store.children(block.parent).length : 0,
       store.children(target.id).map((c) => c.type).join(),
@@ -417,7 +435,7 @@ export class PlanBlockElement extends HTMLElement {
 
     if (!entry || entry.signature !== signature) {
       const children = entry?.children ?? h('div', { class: 'pb-children', 'data-pb-children': '' });
-      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.readonly, store, labels: this._labels, h, parts };
+      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.isReadOnly, store, labels: this._labels, h, parts };
       const el = rendererFor(target.type)(ctx);
 
       el.classList.add('pb-block');
@@ -456,7 +474,7 @@ export class PlanBlockElement extends HTMLElement {
         return el._store;
       },
       get readonly() {
-        return el.readonly;
+        return el.isReadOnly;
       },
       move: (id, parent, after) => el._store?.move(id, { parent, after }),
     };
@@ -479,7 +497,7 @@ export class PlanBlockElement extends HTMLElement {
       // Arrow keys on a focused drag handle move the block.
       const handle = (event.target as Element | null)?.closest<HTMLElement>('[data-pb-drag-handle]');
       const blockEl = handle?.closest<HTMLElement>('[data-pb-key]');
-      if ((key === 'ArrowUp' || key === 'ArrowDown') && blockEl?.dataset.pbId && !this.readonly) {
+      if ((key === 'ArrowUp' || key === 'ArrowDown') && blockEl?.dataset.pbId && !this.isReadOnly) {
         event.preventDefault();
         this.shift(blockEl.dataset.pbId, key === 'ArrowUp' ? -1 : 1);
       }

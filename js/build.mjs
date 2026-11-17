@@ -1,5 +1,5 @@
 // Builds:
-//  - dist/client.js, dist/web-component.js   ESM, for JS-framework users (npm)
+//  - dist/client.js, web-component.js, vue.js, react.js   ESM, for npm users
 //  - ../resources/dist/plan-block.js         IIFE, served by the Laravel package (no npm needed)
 //  - ../resources/dist/plan-block.css        the same styles the component injects
 import { build } from 'esbuild';
@@ -14,9 +14,15 @@ const shared = {
 
 await build({
   ...shared,
-  entryPoints: { client: 'src/client/index.ts', 'web-component': 'src/web-component/index.ts' },
+  entryPoints: {
+    client: 'src/client/index.ts',
+    'web-component': 'src/web-component/index.ts',
+    vue: 'src/vue/index.ts',
+    react: 'src/react/index.ts',
+  },
   outdir: 'dist',
   format: 'esm',
+  external: ['vue', 'react', 'react-dom'],
   splitting: true,
   sourcemap: true,
 });

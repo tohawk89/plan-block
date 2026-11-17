@@ -48,7 +48,7 @@
    - **Web component** `<plan-block plan="...">` — the universal default; works in Blade, Livewire, Inertia, Vue, React.
    - **Blade adapter** — `<x-plan-block :plan="$plan" />` outputs the web component with the plan's data embedded as JSON (no extra requests on load) and a read-only server-rendered copy from per-type Blade views (shown until the script loads and without JavaScript). Data is only embedded when the `plan-block.view` gate allows. `@planBlockAssets` adds the prebuilt script from a public, hash-versioned asset route (CSP nonce supported, reuses `Vite::cspNonce()`).
    - **Livewire adapter** — `<livewire:plan-block :plan="$plan" />` (Livewire 3.8.3+ and 4.4.8+; earlier releases have open security advisories). Commands go through the component (`$wire.$call('runCommands')`) straight to the command bus: no API routes needed, Livewire's session and middleware apply. It reuses the same web component for the UI inside its own `wire:ignore`, so there is one UI implementation and users never write `wire:ignore` themselves. *(Changed from the original idea of Livewire re-rendering the blocks: that would have meant a second, Livewire-specific UI to keep in sync.)* After each saved batch the component dispatches `plan-block-changed`; PHP code dispatches `plan-block-refresh` to make the editor reload. The editor renders from embedded data immediately and waits for Livewire to start before sending.
-   - **Vue / React wrappers** — thin bindings over the headless client, built on demand.
+   - **Vue / React wrappers** — `<PlanBlock>` components for Vue 3.3+ and React 18/19 that render the web component and hand it a store (`element.useStore()`), plus `usePlanStore()` / `usePlanSnapshot()` for fully custom UIs on the headless store. `initial` takes `PlanBlock::initialData($plan)` (e.g. an Inertia prop), so pages show without requests. Events: `ready`, `command`, `error`, `sync`.
 
 **Change from v1:** "DOM attributes are the state" is no longer a core rule. The headless store is the client's source of truth. Vanilla and web-component renderers mirror it into `data-pb-*` attributes so CSS can style by state.
 
@@ -364,7 +364,7 @@ Must account for Tailwind preflight / Bootstrap reboot bleeding in.
 Monorepo:
 
 - **Composer:** `tohawk89/plan-block` — PHP core, API, Blade and Livewire adapters, plus prebuilt JS/CSS assets
-- **npm (JS-framework users only):** `client`, `web-component`, later `vue`, `react` — scope name TBD
+- **npm (JS-framework users only):** one package with subpath exports `client`, `web-component`, `vue`, `react`; Vue and React are optional peer dependencies. *(Changed from separate packages: one version to release and keep in sync.)* Package name/scope TBD.
 
 ---
 
