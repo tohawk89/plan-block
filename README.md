@@ -1,5 +1,7 @@
 # Plan Block
 
+[![Tests](https://github.com/tohawk89/plan-block/actions/workflows/tests.yml/badge.svg)](https://github.com/tohawk89/plan-block/actions/workflows/tests.yml)
+
 A Notion-style block system for Laravel, built for flexible itineraries and backup plans.
 
 - Schedule blocks into days or keep them in a sandbox pool

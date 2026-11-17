@@ -29,6 +29,10 @@ it('lets the plan owner view and edit by default', function () {
         ->assertOk()
         ->assertJsonPath('plan.version', 1)
         ->assertJsonCount(1, 'blocks');
+
+    // Integer user keys against the string morph columns (strict on Postgres).
+    expect($owner->plans()->count())->toBe(1)
+        ->and($plan->fresh()->owner->is($owner))->toBeTrue();
 });
 
 it('forbids other users unless the host gate allows them', function () {
