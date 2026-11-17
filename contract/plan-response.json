@@ -1,0 +1,185 @@
+{
+    "plan": {
+        "id": "01jd00000000000000000000p1",
+        "title": "Trip to JB",
+        "start_date": "2026-12-01",
+        "version": 12
+    },
+    "blocks": [
+        {
+            "id": "01jd0000000000000000000001",
+            "type": "timeline",
+            "parent": null,
+            "order": 1024,
+            "source": null,
+            "attachable": null,
+            "payload": {},
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": {
+                "state": "all",
+                "done": 1,
+                "total": 1
+            },
+            "day": {
+                "number": 1,
+                "date": "2026-12-01"
+            }
+        },
+        {
+            "id": "01jd0000000000000000000002",
+            "type": "place",
+            "parent": "01jd0000000000000000000001",
+            "order": 1024,
+            "source": null,
+            "attachable": null,
+            "payload": {
+                "name": "Breakfast",
+                "time": "08:00"
+            },
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": null,
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000003",
+            "type": "backup",
+            "parent": "01jd0000000000000000000002",
+            "order": 1024,
+            "source": null,
+            "attachable": null,
+            "payload": {
+                "name": "Backup cafe"
+            },
+            "checked": true,
+            "checked_at": "2026-11-17T10:00:00+00:00",
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": null,
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000004",
+            "type": "place",
+            "parent": "01jd0000000000000000000001",
+            "order": 2048,
+            "source": null,
+            "attachable": null,
+            "payload": {
+                "name": "Lunch",
+                "time": "12:30"
+            },
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": true,
+            "done": false,
+            "progress": null,
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000005",
+            "type": "note",
+            "parent": "01jd0000000000000000000001",
+            "order": 3072,
+            "source": null,
+            "attachable": null,
+            "payload": {
+                "text": "Bring cash"
+            },
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": false,
+            "progress": null,
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000006",
+            "type": "pool",
+            "parent": null,
+            "order": 2048,
+            "source": null,
+            "attachable": null,
+            "payload": {},
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": false,
+            "progress": {
+                "state": "all",
+                "done": 1,
+                "total": 1
+            },
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000007",
+            "type": "place",
+            "parent": "01jd0000000000000000000006",
+            "order": 1024,
+            "source": null,
+            "attachable": null,
+            "payload": {
+                "name": "Museum",
+                "maps_url": "https://maps.example.test/museum"
+            },
+            "checked": true,
+            "checked_at": "2026-11-17T10:00:00+00:00",
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": null,
+            "day": null
+        },
+        {
+            "id": "01jd0000000000000000000008",
+            "type": "timeline",
+            "parent": null,
+            "order": 3072,
+            "source": null,
+            "attachable": null,
+            "payload": {},
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": {
+                "state": "all",
+                "done": 1,
+                "total": 1
+            },
+            "day": {
+                "number": 2,
+                "date": "2026-12-02"
+            }
+        },
+        {
+            "id": "01jd0000000000000000000009",
+            "type": "link",
+            "parent": "01jd0000000000000000000008",
+            "order": 1024,
+            "source": "01jd0000000000000000000007",
+            "attachable": null,
+            "payload": {},
+            "checked": false,
+            "checked_at": null,
+            "checked_by": null,
+            "excluded": false,
+            "done": true,
+            "progress": null,
+            "day": null
+        }
+    ]
+}

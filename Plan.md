@@ -286,7 +286,15 @@ $plan->commands($user)->check($block)->move($other, $day)->run(); // returns the
 
 ### 8.7 Client events
 
-The JS client emits browser events for host integration (generalised from v1's `plan-block-updated`), e.g. `plan-block:checked`, `plan-block:moved`, `plan-block:deleted`. Laravel events (`BlockChecked`, `BlockMoved`, ...) are dispatched server-side.
+The `<plan-block>` element emits bubbling, composed browser events for host integration (generalised from v1's `plan-block-updated`), named after the command: `plan-block:check`, `plan-block:check-all`, `plan-block:move`, `plan-block:delete`, ... plus `plan-block:error`, `plan-block:sync` and `plan-block:ready`. The headless `PlanStore` emits `change`, `command`, `error` and `sync`. Laravel events (`BlockChecked`, `BlockMoved`, ...) are dispatched server-side.
+
+Client implementation notes (v1):
+
+- **View = confirmed server state + unconfirmed commands**, recomputed on every change. Rollback is dropping a command and recomputing.
+- Optimistic updates cover stored fields only (checked, payload, position, new and deleted blocks). Group progress and "done" come from the server response.
+- Commands issued in the same tick go out as one batch. If the server rejects one command, the rest of the batch is resent.
+- Network errors: commands stay queued in `localStorage` and retry with backoff (and on the browser's `online` event). Signed-out or expired sessions keep the queue until reload.
+- `delete` on an already-deleted block is a no-op on the server, so retries are safe.
 
 ---
 

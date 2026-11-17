@@ -1,0 +1,2 @@
+# Built assets are generated; hide them from diffs and GitHub language stats.
+/resources/dist/** linguist-generated=true -diff

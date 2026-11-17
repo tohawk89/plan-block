@@ -39,6 +39,22 @@ it('deleting a link removes only the link', function () {
         ->and(block($link)->trashed())->toBeTrue();
 });
 
+it('treats deleting an already deleted block as a no-op (safe retry)', function () {
+    $plan = makePlan();
+    [$day, $place] = [id(), id()];
+
+    $plan->commands()
+        ->create('timeline', id: $day)
+        ->create('place', $day, payload: ['name' => 'Cafe'], id: $place)
+        ->delete($place)
+        ->run();
+
+    $result = $plan->commands()->delete($place)->run();
+
+    expect($result->deleted)->toBe([])
+        ->and(block($place)->trashed())->toBeTrue();
+});
+
 it('restores everything deleted in the same batch', function () {
     $plan = makePlan();
     [$pool, $place, $backup, $day, $link] = [id(), id(), id(), id(), id()];

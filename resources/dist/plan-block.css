@@ -1,0 +1,377 @@
+/*
+ * Plan Block default styles. Everything sits in its own cascade layer and
+ * uses .pb- classes, so host styles win where they overlap and Tailwind or
+ * Bootstrap resets do not need to be fought. Theme with --pb-* variables.
+ */
+@layer plan-block {
+  plan-block,
+  :host {
+    --pb-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --pb-text: #1f2328;
+    --pb-muted: #656d76;
+    --pb-bg: #ffffff;
+    --pb-surface: #f6f8fa;
+    --pb-border: #d0d7de;
+    --pb-accent: #0969da;
+    --pb-done: #1a7f37;
+    --pb-danger: #cf222e;
+    --pb-radius: 8px;
+    --pb-gap: 0.5rem;
+
+    display: block;
+    font-family: var(--pb-font);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: var(--pb-text);
+  }
+
+  .pb-root,
+  .pb-root * {
+    box-sizing: border-box;
+  }
+
+  .pb-toolbar,
+  .pb-footer,
+  .pb-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--pb-gap) / 2);
+  }
+
+  .pb-toolbar {
+    margin-bottom: var(--pb-gap);
+  }
+
+  .pb-list {
+    display: grid;
+    gap: calc(var(--pb-gap) * 1.5);
+  }
+
+  .pb-button {
+    appearance: none;
+    border: 1px solid var(--pb-border);
+    background: var(--pb-bg);
+    color: inherit;
+    font: inherit;
+    font-size: 0.8125rem;
+    line-height: 1;
+    padding: 0.4rem 0.6rem;
+    border-radius: calc(var(--pb-radius) - 2px);
+    cursor: pointer;
+    min-height: 2rem;
+  }
+
+  .pb-button:hover {
+    border-color: var(--pb-accent);
+  }
+
+  .pb-button:focus-visible,
+  .pb-check:focus-visible,
+  .pb-title:focus-visible,
+  .pb-select:focus-visible {
+    outline: 2px solid var(--pb-accent);
+    outline-offset: 1px;
+  }
+
+  .pb-button--primary {
+    background: var(--pb-accent);
+    border-color: var(--pb-accent);
+    color: #fff;
+  }
+
+  .pb-button--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--pb-muted);
+    min-width: 2rem;
+  }
+
+  .pb-button--ghost:hover {
+    color: var(--pb-text);
+    background: var(--pb-surface);
+  }
+
+  .pb-button--danger:hover {
+    color: var(--pb-danger);
+  }
+
+  .pb-group {
+    border: 1px solid var(--pb-border);
+    border-radius: var(--pb-radius);
+    background: var(--pb-bg);
+    overflow: hidden;
+  }
+
+  .pb-group__header {
+    display: flex;
+    align-items: center;
+    gap: var(--pb-gap);
+    padding: 0.6rem 0.75rem;
+    background: var(--pb-surface);
+    border-bottom: 1px solid var(--pb-border);
+  }
+
+  .pb-group__title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .pb-group > .pb-children {
+    padding: 0.25rem 0.75rem;
+  }
+
+  .pb-group > .pb-footer {
+    padding: 0.5rem 0.75rem 0.75rem;
+  }
+
+  .pb-children:empty {
+    display: none;
+  }
+
+  .pb-progress {
+    font-size: 0.8125rem;
+    color: var(--pb-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pb-progress[data-state='all'] {
+    color: var(--pb-done);
+    font-weight: 600;
+  }
+
+  .pb-muted {
+    color: var(--pb-muted);
+    font-size: 0.8125rem;
+  }
+
+  .pb-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--pb-surface);
+  }
+
+  .pb-item:last-child {
+    border-bottom: 0;
+  }
+
+  .pb-item__row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--pb-gap);
+  }
+
+  .pb-item__main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pb-item > .pb-children {
+    margin: 0.25rem 0 0 1.75rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--pb-surface);
+  }
+
+  .pb-item > .pb-footer {
+    margin: 0.25rem 0 0 1.75rem;
+  }
+
+  /* With a mouse, an item's add buttons appear on hover or keyboard focus.
+     Touch devices cannot hover, so they always see them. */
+  @media (hover: hover) {
+    .pb-item > .pb-footer {
+      height: 0;
+      margin-top: 0;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .pb-item:hover > .pb-footer,
+    .pb-item:focus-within > .pb-footer {
+      height: auto;
+      margin-top: 0.25rem;
+      overflow: visible;
+      opacity: 1;
+    }
+  }
+
+  .pb-check {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--pb-done);
+    cursor: pointer;
+    flex: none;
+  }
+
+  .pb-title {
+    all: unset;
+    cursor: text;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  [data-pb-done] > .pb-item__row .pb-title {
+    color: var(--pb-muted);
+  }
+
+  [data-pb-checked] > .pb-item__row .pb-title {
+    text-decoration: line-through;
+  }
+
+  [data-pb-excluded] > .pb-item__row .pb-item__main {
+    opacity: 0.5;
+    text-decoration: line-through;
+  }
+
+  .pb-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--pb-muted);
+  }
+
+  .pb-meta a {
+    color: var(--pb-accent);
+  }
+
+  .pb-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 999px;
+    background: var(--pb-surface);
+    color: var(--pb-muted);
+    border: 1px solid var(--pb-border);
+    vertical-align: middle;
+  }
+
+  .pb-badge--done {
+    color: var(--pb-done);
+    border-color: currentColor;
+  }
+
+  .pb-note {
+    padding: 0.35rem 0;
+    font-size: 0.875rem;
+    color: var(--pb-muted);
+    white-space: pre-wrap;
+  }
+
+  .pb-notes {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--pb-muted);
+    white-space: pre-wrap;
+  }
+
+  .pb-select {
+    font: inherit;
+    font-size: 0.8125rem;
+    border: 1px solid var(--pb-border);
+    border-radius: calc(var(--pb-radius) - 2px);
+    background: var(--pb-bg);
+    color: inherit;
+    padding: 0.3rem;
+    min-height: 2rem;
+    max-width: 10rem;
+  }
+
+  .pb-form {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .pb-field {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.8125rem;
+    color: var(--pb-muted);
+  }
+
+  .pb-input {
+    font: inherit;
+    color: var(--pb-text);
+    border: 1px solid var(--pb-border);
+    border-radius: calc(var(--pb-radius) - 2px);
+    padding: 0.4rem 0.5rem;
+    background: var(--pb-bg);
+    width: 100%;
+  }
+
+  .pb-input:focus {
+    outline: 2px solid var(--pb-accent);
+    outline-offset: -1px;
+  }
+
+  .pb-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--pb-muted);
+    border: 1px dashed var(--pb-border);
+    border-radius: var(--pb-radius);
+  }
+
+  .pb-status {
+    min-height: 1.25rem;
+    margin-top: var(--pb-gap);
+    font-size: 0.8125rem;
+    color: var(--pb-muted);
+  }
+
+  .pb-status[data-state='offline'] {
+    color: var(--pb-danger);
+  }
+
+  .pb-toast {
+    position: sticky;
+    bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pb-gap);
+    margin-top: var(--pb-gap);
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--pb-radius);
+    background: var(--pb-text);
+    color: var(--pb-bg);
+    font-size: 0.875rem;
+  }
+
+  .pb-toast[data-kind='error'] {
+    background: var(--pb-danger);
+  }
+
+  .pb-toast .pb-button {
+    background: transparent;
+    color: inherit;
+    border-color: currentColor;
+  }
+
+  .pb-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 480px) {
+    .pb-item__row {
+      flex-wrap: wrap;
+    }
+
+    .pb-item__row > .pb-actions {
+      width: 100%;
+      padding-left: 1.75rem;
+    }
+  }
+}

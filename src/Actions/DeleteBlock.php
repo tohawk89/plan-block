@@ -17,7 +17,13 @@ class DeleteBlock extends Action
 {
     public function handle(Context $ctx, string $blockId, array $args): void
     {
-        $block = $this->block($ctx, $blockId);
+        $block = $this->block($ctx, $blockId, withTrashed: true);
+
+        // Already deleted: a retried request whose first response was lost.
+        if ($block->trashed()) {
+            return;
+        }
+
         $tree = $ctx->tree();
         $affected = self::affected($tree, $tree->find($block->id));
         $batch = strtolower((string) Str::ulid());

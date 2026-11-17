@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plan Block demo</title>
+    <style>
+      body {
+        max-width: 760px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        background: #fafafa;
+        font-family: system-ui, sans-serif;
+      }
+    </style>
+    <!-- The same prebuilt script the Laravel package serves. -->
+    <script src="../../resources/dist/plan-block.js"></script>
+  </head>
+  <body>
+    <h1>Trip to JB</h1>
+    <p>Demo against <code>contract/plan-response.json</code> with an in-page fake server (300 ms latency). Serve the repo root and open <code>/js/demo/</code>.</p>
+    <plan-block id="demo"></plan-block>
+
+    <script type="module">
+      const [plan, manifest] = await Promise.all([
+        fetch('../../contract/plan-response.json').then((r) => r.json()),
+        fetch('../../contract/manifest.json').then((r) => r.json()),
+      ]);
+
+      let store;
+      let version = plan.plan.version;
+
+      // Fake server: accepts everything and echoes the client's state back.
+      const transport = {
+        loadPlan: async () => structuredClone(plan),
+        loadManifest: async () => manifest,
+        send: async (base, commands) => {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          version += commands.length;
+          return { ok: true, version, full: true, blocks: store.all(), deleted: [] };
+        },
+        deleteImpact: async (id) => ({
+          block: id,
+          descendants: 0,
+          links: store.all()
+            .filter((b) => b.source === id)
+            .map((l) => ({ id: l.id, source: id, parent: l.parent, parent_type: 'timeline', day: store.get(l.parent)?.day ?? null })),
+        }),
+      };
+
+      store = new PlanBlock.PlanStore({ transport, storage: null });
+      await store.load();
+      document.getElementById('demo').store = store;
+    </script>
+  </body>
+</html>

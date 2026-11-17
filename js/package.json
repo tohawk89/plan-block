@@ -1,0 +1,31 @@
+{
+  "name": "plan-block",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Headless JS client and <plan-block> web component for the Plan Block Laravel package.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./web-component": {
+      "types": "./dist/web-component/index.d.ts",
+      "import": "./dist/web-component.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "node build.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "happy-dom": "^18.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

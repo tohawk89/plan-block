@@ -10,3 +10,5 @@ composer.lock
 Thumbs.db
 .idea/
 .vscode/
+/js/node_modules/
+/js/dist/

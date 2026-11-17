@@ -1,0 +1,230 @@
+{
+    "version": 1,
+    "types": {
+        "timeline": {
+            "key": "timeline",
+            "label": "Day",
+            "icon": "calendar",
+            "structural": true,
+            "root": true,
+            "checkable": false,
+            "countable": true,
+            "rule": "all",
+            "fields": [
+                {
+                    "name": "label",
+                    "type": "text",
+                    "label": "Label",
+                    "required": false,
+                    "max": 80
+                }
+            ],
+            "parents": [],
+            "children": {
+                "allow": [
+                    "link"
+                ],
+                "any_content": true,
+                "max": {}
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.timeline",
+                "js": "timeline"
+            }
+        },
+        "pool": {
+            "key": "pool",
+            "label": "Pool",
+            "icon": "inbox",
+            "structural": true,
+            "root": true,
+            "checkable": false,
+            "countable": false,
+            "rule": "count",
+            "fields": [
+                {
+                    "name": "label",
+                    "type": "text",
+                    "label": "Label",
+                    "required": false,
+                    "max": 80
+                }
+            ],
+            "parents": [],
+            "children": {
+                "allow": [
+                    "link"
+                ],
+                "any_content": true,
+                "max": {}
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.pool",
+                "js": "pool"
+            }
+        },
+        "link": {
+            "key": "link",
+            "label": "Link",
+            "icon": "link",
+            "structural": true,
+            "root": false,
+            "checkable": true,
+            "countable": true,
+            "rule": "none",
+            "fields": [],
+            "parents": [
+                "timeline",
+                "pool"
+            ],
+            "children": {
+                "allow": [],
+                "any_content": false,
+                "max": {}
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.link",
+                "js": "link"
+            }
+        },
+        "place": {
+            "key": "place",
+            "label": "Place",
+            "icon": "map-pin",
+            "structural": false,
+            "root": false,
+            "checkable": true,
+            "countable": true,
+            "rule": "any",
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "text",
+                    "label": "Name",
+                    "required": true,
+                    "max": 120
+                },
+                {
+                    "name": "maps_url",
+                    "type": "url",
+                    "label": "Maps url",
+                    "required": false,
+                    "max": 2048
+                },
+                {
+                    "name": "time",
+                    "type": "time",
+                    "label": "Time",
+                    "required": false
+                },
+                {
+                    "name": "notes",
+                    "type": "textarea",
+                    "label": "Notes",
+                    "required": false,
+                    "max": 5000
+                }
+            ],
+            "parents": [
+                "timeline",
+                "pool"
+            ],
+            "children": {
+                "allow": [
+                    "backup",
+                    "note"
+                ],
+                "any_content": false,
+                "max": {
+                    "backup": 3
+                }
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.place",
+                "js": "place"
+            }
+        },
+        "backup": {
+            "key": "backup",
+            "label": "Backup",
+            "icon": "life-buoy",
+            "structural": false,
+            "root": false,
+            "checkable": true,
+            "countable": true,
+            "rule": "none",
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "text",
+                    "label": "Name",
+                    "required": true,
+                    "max": 120
+                },
+                {
+                    "name": "maps_url",
+                    "type": "url",
+                    "label": "Maps url",
+                    "required": false,
+                    "max": 2048
+                },
+                {
+                    "name": "time",
+                    "type": "time",
+                    "label": "Time",
+                    "required": false
+                },
+                {
+                    "name": "notes",
+                    "type": "textarea",
+                    "label": "Notes",
+                    "required": false,
+                    "max": 5000
+                }
+            ],
+            "parents": [
+                "place"
+            ],
+            "children": {
+                "allow": [
+                    "note"
+                ],
+                "any_content": false,
+                "max": {}
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.backup",
+                "js": "backup"
+            }
+        },
+        "note": {
+            "key": "note",
+            "label": "Note",
+            "icon": "sticky-note",
+            "structural": false,
+            "root": false,
+            "checkable": false,
+            "countable": false,
+            "rule": "none",
+            "fields": [
+                {
+                    "name": "text",
+                    "type": "textarea",
+                    "label": "Text",
+                    "required": true,
+                    "max": 5000
+                }
+            ],
+            "parents": null,
+            "children": {
+                "allow": [],
+                "any_content": false,
+                "max": {}
+            },
+            "renderers": {
+                "blade": "plan-block::blocks.note",
+                "js": "note"
+            }
+        }
+    }
+}
