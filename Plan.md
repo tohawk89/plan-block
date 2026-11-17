@@ -267,11 +267,17 @@ POST /plan-block/plans/{plan}/commands
 
 ### 8.4 Authorisation
 
-The package calls Laravel Gates (`view-plan`, `edit-plan`); the host app defines who owns or can edit a plan.
+The package calls Laravel Gates `plan-block.view` and `plan-block.edit`. Default: only the plan's owner model may view/edit; the host app overrides with `Gate::define()`.
 
-### 8.5 Livewire
+### 8.5 PHP API and Livewire
 
-The Livewire adapter calls Actions directly (no HTTP) and receives the same change list.
+Host code and the Livewire adapter use the same bus without HTTP:
+
+```php
+$plan->commands($user)->check($block)->move($other, $day)->run(); // returns the same change list
+```
+
+`after: null` means "insert first"; omitting `parent` on `move` keeps the current parent.
 
 ### 8.6 Optional extras
 
@@ -286,19 +292,19 @@ The JS client emits browser events for host integration (generalised from v1's `
 
 ## 9. Database Schema (draft)
 
-### `plans`
+### `plans` (default table name `plan_block_plans`, configurable)
 
 | Column | Type | Notes |
 |---|---|---|
 | id | BigInt | PK |
 | ulid | ULID | Public identifier |
-| owner_type / owner_id | Polymorphic | Host decides ownership |
+| owner_type / owner_id | String morph, nullable | Host decides ownership; strings so int, UUID and ULID keys all work |
 | title | String | e.g. "Trip to JB" |
 | start_date | Date, nullable | Day dates derive from this (§14.4) |
 | version | Integer | Incremented per command (§8.3) |
 | timestamps, deleted_at | | |
 
-### `plan_blocks`
+### `plan_blocks` (default table name `plan_block_blocks`, configurable)
 
 | Column | Type | Notes |
 |---|---|---|
@@ -309,11 +315,12 @@ The JS client emits browser events for host integration (generalised from v1's `
 | block_type | String | `timeline`, `pool`, `link`, `place`, `backup`, custom... |
 | order_column | Integer | Gapped ordering, scoped per `parent_id` |
 | source_block_id | FK, nullable | Link target; `ON DELETE CASCADE` |
-| attachable_type / attachable_id | Polymorphic, nullable | Attach to host model (e.g. `Restaurant`) |
+| attachable_type / attachable_id | String morph, nullable | Attach to host model (e.g. `Restaurant`) |
 | payload | JSON | Type-specific fields |
 | checked_at | Timestamp, nullable | Checkbox state (individual blocks only) |
-| checked_by | FK, nullable | Who checked it |
+| checked_by | String, nullable | Auth identifier of who checked it (no FK: host users table is unknown) |
 | excluded_at | Timestamp, nullable | Excluded from progress |
+| delete_batch | ULID, nullable | Blocks deleted together share a batch and restore together |
 | timestamps, deleted_at | | Soft delete for undo |
 
 ### Loading

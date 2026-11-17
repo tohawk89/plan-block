@@ -1,0 +1,56 @@
+{
+    "name": "tohawk89/plan-block",
+    "description": "Notion-style block system for Laravel: flexible itineraries, backup plans and linked checklists. Works with Blade, Livewire or any JS framework.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "blocks", "itinerary", "planner", "checklist", "livewire"],
+    "authors": [
+        {
+            "name": "Nazar"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/routing": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/validation": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tohawk89\\PlanBlock\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tohawk89\\PlanBlock\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Tohawk89\\PlanBlock\\PlanBlockServiceProvider"
+            ],
+            "aliases": {
+                "PlanBlock": "Tohawk89\\PlanBlock\\Facades\\PlanBlock"
+            }
+        }
+    },
+    "scripts": {
+        "test": "pest"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
