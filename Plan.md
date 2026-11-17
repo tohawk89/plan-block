@@ -376,7 +376,7 @@ Monorepo:
 | Item | Decision |
 |---|---|
 | PHP | 8.3+ |
-| Laravel | 11+ |
+| Laravel | 12+ (11 dropped: end of life, every release has open security advisories) |
 | Livewire | 3+ (adapter ships after v1 core) |
 | Databases | MySQL, PostgreSQL, SQLite — CI runs tests on all three |
 | Composer package | `tohawk89/plan-block` (Packagist) |

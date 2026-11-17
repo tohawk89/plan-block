@@ -20,24 +20,19 @@ jobs:
       fail-fast: false
       matrix:
         php: ['8.3', '8.4', '8.5']
-        laravel: ['11.*', '12.*', '13.*']
+        laravel: ['12.*', '13.*']
         stability: [prefer-lowest, prefer-stable]
         db: [sqlite]
-        exclude:
-          - laravel: '11.*'
-            php: '8.5'
         include:
           # Testbench version per Laravel version
-          - laravel: '11.*'
-            testbench: '9.*'
           - laravel: '12.*'
             testbench: '10.*'
           - laravel: '13.*'
             testbench: '11.*'
 
           # MySQL and PostgreSQL on the oldest and newest supported Laravel
-          - { php: '8.3', laravel: '11.*', testbench: '9.*', stability: prefer-stable, db: mysql }
-          - { php: '8.3', laravel: '11.*', testbench: '9.*', stability: prefer-stable, db: pgsql }
+          - { php: '8.3', laravel: '12.*', testbench: '10.*', stability: prefer-stable, db: mysql }
+          - { php: '8.3', laravel: '12.*', testbench: '10.*', stability: prefer-stable, db: pgsql }
           - { php: '8.4', laravel: '13.*', testbench: '11.*', stability: prefer-stable, db: mysql }
           - { php: '8.4', laravel: '13.*', testbench: '11.*', stability: prefer-stable, db: pgsql }
 
@@ -81,7 +76,7 @@ jobs:
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
 
       - name: Installed versions
-        run: composer show laravel/framework orchestra/testbench pestphp/pest | grep -E '^(name|versions)'
+        run: composer show | grep -E '^(laravel/framework|orchestra/testbench|pestphp/pest|phpunit/phpunit) '
 
       - name: Configure database
         run: |
