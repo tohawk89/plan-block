@@ -1,6 +1,6 @@
 import { RejectedError, TransportError } from '../src/client/transport';
 import type { CommandSuccess } from '../src/client/types';
-import { deferred, FakeTransport, ids, makeStore, MemoryStorage, planResponse, settle } from './helpers';
+import { deferred, FakeTransport, ids, makeStore, MemoryStorage, planResponse, savedQueues, settle } from './helpers';
 
 describe('PlanStore', () => {
   it('loads the plan and orders children', async () => {
@@ -92,25 +92,26 @@ describe('PlanStore', () => {
 
     expect(store.syncState).toBe('offline');
     expect(store.get(ids.breakfast)?.checked).toBe(true);
-    expect(JSON.parse(storage.getItem(`plan-block:queue:${store.plan!.id}`)!)).toHaveLength(1);
+    expect(Object.values(savedQueues(storage))).toEqual([[expect.objectContaining({ type: 'check', block: ids.breakfast })]]);
 
     fail = false;
     await settle(20);
 
     expect(store.syncState).toBe('idle');
     expect(store.pendingCount).toBe(0);
-    expect(storage.getItem(`plan-block:queue:${store.plan!.id}`)).toBeNull();
+    expect(savedQueues(storage)).toEqual({});
   });
 
-  it('sends commands saved by a previous page load', async () => {
+  it('sends commands saved by a previous page load (old single-key format too)', async () => {
     const storage = new MemoryStorage();
     storage.setItem('plan-block:queue:01jd00000000000000000000p1', JSON.stringify([{ id: 'x1', type: 'check', block: ids.breakfast }]));
 
     const { store, transport } = await makeStore(new FakeTransport(), storage);
-    expect(store.get(ids.breakfast)?.checked).toBe(true);
-
     await settle();
+
+    expect(store.get(ids.breakfast)?.checked).toBe(true);
     expect(transport.sent[0]?.commands).toEqual([{ id: 'x1', type: 'check', block: ids.breakfast }]);
+    expect(savedQueues(storage)).toEqual({});
   });
 
   it('keeps work queued when the session expired', async () => {
@@ -125,7 +126,7 @@ describe('PlanStore', () => {
 
     expect(store.syncState).toBe('offline');
     expect(store.get(ids.breakfast)?.checked).toBe(true);
-    expect(storage.getItem(`plan-block:queue:${store.plan!.id}`)).not.toBeNull();
+    expect(Object.values(savedQueues(storage))).toHaveLength(1);
   });
 
   it('replaces everything when the server says the client was stale', async () => {

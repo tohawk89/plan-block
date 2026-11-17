@@ -73,6 +73,12 @@ export class FakeTransport implements Transport {
 
 export class MemoryStorage {
   items = new Map<string, string>();
+  get length() {
+    return this.items.size;
+  }
+  key(index: number) {
+    return [...this.items.keys()][index] ?? null;
+  }
   getItem(key: string) {
     return this.items.get(key) ?? null;
   }
@@ -85,7 +91,7 @@ export class MemoryStorage {
 }
 
 export async function makeStore(transport = new FakeTransport(), storage: MemoryStorage | null = new MemoryStorage()) {
-  const store = new PlanStore({ transport, storage, retry: { base: 10, max: 50 } });
+  const store = new PlanStore({ transport, storage, retry: { base: 10, max: 50 }, persistence: { locks: null, intervalMs: 30, staleMs: 100 } });
   await store.load();
   return { store, transport, storage };
 }
@@ -103,4 +109,16 @@ export function deferred<T>() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+/** Saved queue entries for a plan: { key: commands }. */
+export function savedQueues(storage: MemoryStorage, plan = '01jd00000000000000000000p1'): Record<string, unknown[]> {
+  const out: Record<string, unknown[]> = {};
+  for (const [key, value] of storage.items) {
+    if (key.startsWith(`plan-block:queue:${plan}`)) {
+      const data = JSON.parse(value);
+      out[key] = Array.isArray(data) ? data : data.commands;
+    }
+  }
+  return out;
 }

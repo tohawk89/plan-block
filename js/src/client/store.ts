@@ -1,4 +1,5 @@
 import { applyCommand, childrenOf, resolve, type BlockMap } from './optimistic';
+import { defaultLocks, QueueStorage, type LockManagerLike, type QueueBackend } from './queue-storage';
 import { HttpTransport, RejectedError, TransportError, type Transport } from './transport';
 import type {
   BlockData,
@@ -18,7 +19,13 @@ import { ulid } from './ulid';
 export interface PlanStoreOptions {
   transport: Transport;
   /** Where unsent commands survive a reload. Defaults to localStorage; null disables. */
-  storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
+  storage?: QueueBackend | null;
+  /**
+   * How often to refresh this editor's saved queue and look for commands
+   * left by closed editors, and when (without Web Locks) an editor counts
+   * as closed. Locks default to navigator.locks; null forces the heartbeat.
+   */
+  persistence?: { intervalMs?: number; staleMs?: number; locks?: LockManagerLike | null };
   /** Retry backoff for network errors, in ms. */
   retry?: { base: number; max: number };
 }
@@ -60,7 +67,9 @@ export class PlanStore extends EventTarget {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private retryAttempt = 0;
   private destroyed = false;
-  private readonly storage: PlanStoreOptions['storage'];
+  private readonly storage: QueueBackend | null;
+  private queue: QueueStorage | null = null;
+  private queueTimer: ReturnType<typeof setInterval> | null = null;
   private readonly retry: { base: number; max: number };
   private readonly onOnline = () => this.retryNow();
 
@@ -84,9 +93,9 @@ export class PlanStore extends EventTarget {
     this.plan = data.plan;
     this.manifest = data.manifest;
     this.confirmed = new Map(data.blocks.map((b) => [b.id, b]));
-    this.pending = this.restoreQueue();
     this.recompute();
     this.emit('change');
+    this.startQueue();
     if (this.pending.length) this.scheduleFlush();
   }
 
@@ -107,6 +116,9 @@ export class PlanStore extends EventTarget {
   destroy(): void {
     this.destroyed = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);
+    if (this.queueTimer) clearInterval(this.queueTimer);
+    // Unsent commands stay saved; another editor of this plan sends them.
+    this.queue?.stop();
     if (typeof window !== 'undefined') window.removeEventListener('online', this.onOnline);
   }
 
@@ -362,31 +374,42 @@ export class PlanStore extends EventTarget {
     }
   }
 
-  private get storageKey(): string | null {
-    return this.plan ? `plan-block:queue:${this.plan.id}` : null;
-  }
-
   private persistQueue(): void {
-    const key = this.storageKey;
-    if (!this.storage || !key) return;
-    const queue = [...this.inflight, ...this.pending];
-    try {
-      if (queue.length) this.storage.setItem(key, JSON.stringify(queue));
-      else this.storage.removeItem(key);
-    } catch {
-      // storage full or blocked: the queue still lives in memory
-    }
+    this.queue?.save([...this.inflight, ...this.pending]);
   }
 
-  private restoreQueue(): Command[] {
-    const key = this.storageKey;
-    if (!this.storage || !key) return [];
-    try {
-      const saved = JSON.parse(this.storage.getItem(key) ?? '[]');
-      return Array.isArray(saved) ? (saved as Command[]) : [];
-    } catch {
-      return [];
-    }
+  /** Start saving this editor's queue and picking up closed editors' leftovers. */
+  private startQueue(): void {
+    if (!this.storage || !this.plan || this.queue || this.destroyed) return;
+
+    const persistence = this.options.persistence ?? {};
+    const intervalMs = persistence.intervalMs ?? 5000;
+    this.queue = new QueueStorage(this.storage, this.plan.id, {
+      staleMs: persistence.staleMs ?? intervalMs * 3,
+      locks: persistence.locks !== undefined ? persistence.locks : defaultLocks(),
+    });
+    this.queue.start();
+    void this.adoptOrphans();
+
+    this.queueTimer = setInterval(() => {
+      this.persistQueue(); // refreshes the heartbeat
+      void this.adoptOrphans();
+    }, intervalMs);
+  }
+
+  private async adoptOrphans(): Promise<void> {
+    const adopted = (await this.queue?.adoptOrphans()) ?? [];
+    if (this.destroyed || !adopted.length) return;
+
+    const known = new Set([...this.inflight, ...this.pending].map((c) => c.id));
+    const fresh = adopted.filter((c) => !known.has(c.id));
+    if (!fresh.length) return;
+
+    this.pending.push(...fresh);
+    this.persistQueue();
+    this.recompute();
+    this.emit('change');
+    this.scheduleFlush();
   }
 
   private setSync(state: SyncState, message?: string): void {

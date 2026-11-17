@@ -294,6 +294,7 @@ Client implementation notes (v1):
 - Optimistic updates cover stored fields only (checked, payload, position, new and deleted blocks). Group progress and "done" come from the server response.
 - Commands issued in the same tick go out as one batch. If the server rejects one command, the rest of the batch is resent.
 - Network errors: commands stay queued in `localStorage` and retry with backoff (and on the browser's `online` event). Signed-out or expired sessions keep the queue until reload.
+- Each editor saves its queue under its own key (`plan-block:queue:{plan}:{editor}`), so several tabs, or several editors on one page, never overwrite each other. Unsent commands of an editor that is gone (tab closed, component unmounted) are picked up and sent by another editor of the same plan, at startup or within a few seconds. "Gone" means its Web Lock was released (background tabs keep theirs even when throttled); without Web Locks, its heartbeat is older than 15 s. Adoption runs under a shared lock so two tabs never both send the same leftovers. Commands are safe to send twice, so the rare edge cases (a page restored from the back/forward cache after its queue was adopted) only repeat work.
 - `delete` on an already-deleted block is a no-op on the server, so retries are safe.
 
 ---
