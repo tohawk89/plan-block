@@ -18,6 +18,7 @@ export interface Labels {
   delete: string;
   moveUp: string;
   moveDown: string;
+  dragHandle: string;
   exclude: string;
   include: string;
   addToDay: string;
@@ -52,6 +53,7 @@ export const defaultLabels: Labels = {
   delete: 'Delete',
   moveUp: 'Move up',
   moveDown: 'Move down',
+  dragHandle: 'Drag to move (or focus and use the arrow keys)',
   exclude: 'Skip (do not count)',
   include: 'Count again',
   addToDay: 'Add to day…',

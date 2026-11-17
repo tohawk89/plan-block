@@ -423,6 +423,8 @@ Monorepo:
 ### 14.7 Mobile & touch
 
 - Reordering is built on **pointer events** (works with mouse, touch and pen); no native HTML5 drag-and-drop.
+- Drags start from a handle (`data-pb-drag-handle`, `touch-action: none` so touches drag instead of scroll). The block stays in place, dimmed, while a copy follows the pointer; the drop spot shows as `data-pb-drop="before|after|inside"`. Dropping next to a block or inside a group follows the same placement rules as the server (pool to day, backup into another place, days and pools only at the top level). The page auto-scrolls near the viewport edges. Escape cancels.
+- A focused handle moves its block with the arrow keys; focus stays on the handle through re-renders.
 - Up/down move controls always available as a fallback and for accessibility.
 
 ### 14.8 Weak connections

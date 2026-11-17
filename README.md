@@ -46,7 +46,7 @@ Show the editor. No npm needed: the package serves its own script.
 </body>
 ```
 
-The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Options: `readonly`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
+The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Blocks reorder by dragging their handle (mouse, touch or pen) or with the arrow keys on a focused handle. Options: `readonly`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
 
 ### Livewire
 

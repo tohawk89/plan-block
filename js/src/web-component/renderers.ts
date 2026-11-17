@@ -2,6 +2,7 @@ import type { PlanStore } from '../client/store';
 import type { BlockData, FieldManifest, TypeManifest } from '../client/types';
 import { h } from './h';
 import type { Labels } from './labels';
+import { canContain } from './rules';
 
 export interface RenderContext {
   /** The block being rendered (the link block itself for links). */
@@ -103,14 +104,17 @@ function addButtons(ctx: RenderContext, types: string[]): HTMLElement | null {
 }
 
 function canAdd(ctx: RenderContext, key: string): boolean {
-  const child = ctx.store.type(key);
-  const rules = ctx.type?.children;
-  if (!child || !rules) return false;
-  const permitted = rules.allow.includes(key) || (rules.any_content && !child.structural);
-  const parentOk = child.parents === null || child.parents.includes(ctx.target.type);
-  const max = rules.max[key];
-  const count = ctx.store.children(ctx.target.id).filter((b) => b.type === key).length;
-  return permitted && parentOk && (max === undefined || count < max);
+  return canContain(ctx.store, ctx.target.id, key);
+}
+
+/** Drag handle; also moves the block with the arrow keys when focused. */
+function dragHandle(ctx: RenderContext): HTMLElement | null {
+  if (ctx.readonly || ctx.editing) return null;
+  return h(
+    'button',
+    { type: 'button', class: 'pb-drag-handle', 'data-pb-drag-handle': '', 'aria-label': ctx.labels.dragHandle, title: ctx.labels.dragHandle },
+    h('span', { 'aria-hidden': 'true' }, '⠿'),
+  );
 }
 
 function checkbox(ctx: RenderContext): HTMLElement | null {
@@ -192,7 +196,7 @@ function formatDate(date: string | null): string | null {
   return Number.isNaN(parsed.getTime()) ? date : new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(parsed);
 }
 
-export const parts = { title, titleOf, iconButton, itemActions, addButtons, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
+export const parts = { title, titleOf, iconButton, itemActions, addButtons, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
 
 // ---- Default renderers --------------------------------------------------
 
@@ -207,6 +211,7 @@ const timeline: Renderer = (ctx) => {
     h(
       'header',
       { class: 'pb-group__header' },
+      dragHandle(ctx),
       h('input', {
         type: 'checkbox',
         class: 'pb-check',
@@ -243,6 +248,7 @@ const pool: Renderer = (ctx) => {
     h(
       'header',
       { class: 'pb-group__header' },
+      dragHandle(ctx),
       h('div', { class: 'pb-group__title' }, ctx.editing ? null : title(ctx, label), linkBadge(ctx)),
       h('span', { class: 'pb-progress' }, labels.poolProgress(progress.done, progress.total)),
       ctx.readonly ? null : h('div', { class: 'pb-actions' }, iconButton('move-up', labels.moveUp, '↑'), iconButton('move-down', labels.moveDown, '↓'), iconButton('delete', labels.delete, '✕')),
@@ -265,6 +271,7 @@ const place: Renderer = (ctx) => {
     h(
       'div',
       { class: 'pb-item__row' },
+      dragHandle(ctx),
       checkbox(ctx),
       h(
         'div',
@@ -298,6 +305,7 @@ const note: Renderer = (ctx) =>
     h(
       'div',
       { class: 'pb-item__row' },
+      dragHandle(ctx),
       h('div', { class: 'pb-item__main' }, ctx.editing ? editForm(ctx) : h('div', { class: 'pb-note' }, title(ctx))),
       ctx.editing ? null : itemActions(ctx),
     ),
@@ -311,6 +319,7 @@ const genericItem: Renderer = (ctx) =>
     h(
       'div',
       { class: 'pb-item__row' },
+      dragHandle(ctx),
       checkbox(ctx),
       h('div', { class: 'pb-item__main' }, ctx.editing ? editForm(ctx) : h('div', {}, title(ctx), ' ', linkBadge(ctx))),
       ctx.editing ? null : itemActions(ctx, { linkable: true }),

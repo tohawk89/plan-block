@@ -3,6 +3,7 @@ import { LivewireTransport, type LivewireWire } from '../client/livewire-transpo
 import { HttpTransport, type Transport } from '../client/transport';
 import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } from '../client/types';
 import { h } from './h';
+import { DragController, type DragHost } from './drag';
 import { defaultLabels, type Labels } from './labels';
 import { parts, rendererFor, type RenderContext } from './renderers';
 import css from './styles.css';
@@ -43,6 +44,7 @@ export class PlanBlockElement extends HTMLElement {
   private cache = new Map<string, CacheEntry>();
   private editingKey: string | null = null;
   private focusEditor = false;
+  private readonly drag = new DragController(this.dragHost());
   private toast: Toast | null = null;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private renderScheduled = false;
@@ -102,6 +104,7 @@ export class PlanBlockElement extends HTMLElement {
 
   disconnectedCallback(): void {
     window.removeEventListener('plan-block-refresh', this.onRefresh);
+    this.drag.cancel();
     if (this.ownsStore) {
       this._store?.destroy();
       this.detachStore();
@@ -287,6 +290,7 @@ export class PlanBlockElement extends HTMLElement {
       return;
     }
 
+    const focus = this.captureFocus();
     const seen = new Set<string>();
     const top = store.children(null).map((block) => this.renderBlock(block, '', seen, 0));
 
@@ -337,6 +341,40 @@ export class PlanBlockElement extends HTMLElement {
       const field = this.root.querySelector<HTMLElement>(`[data-pb-key="${cssEscape(this.editingKey)}"] [data-pb-form] .pb-input`);
       field?.focus();
     }
+
+    this.restoreFocus(focus);
+  }
+
+  /**
+   * Which control has focus, as block key + control, so focus can move to
+   * the replacement when a block's element is re-created (e.g. after a
+   * keyboard move is confirmed by the server).
+   */
+  private captureFocus(): { key: string; selector: string; el: Element } | null {
+    const active = (this.root instanceof ShadowRoot ? this.root : document).activeElement;
+    if (!active || !this.container?.contains(active)) return null;
+    const key = active.closest<HTMLElement>('[data-pb-key]')?.dataset.pbKey;
+    if (!key) return null;
+    const action = (active as HTMLElement).dataset?.pbAction;
+    const selector = active.hasAttribute('data-pb-drag-handle') ? '[data-pb-drag-handle]' : action ? `[data-pb-action="${cssEscape(action)}"]` : null;
+    return selector ? { key, selector, el: active } : null;
+  }
+
+  private restoreFocus(focus: { key: string; selector: string; el: Element } | null): void {
+    if (!focus) return;
+    const active = (this.root instanceof ShadowRoot ? this.root : document).activeElement;
+    if (active === focus.el) return;
+
+    // Moved but kept (reordering drops focus too): focus it again.
+    if (focus.el.isConnected) {
+      (focus.el as HTMLElement).focus();
+      return;
+    }
+
+    const blockEl = this.root.querySelector<HTMLElement>(`[data-pb-key="${cssEscape(focus.key)}"]`);
+    // The control itself, not the same control of a nested block.
+    const match = [...(blockEl?.querySelectorAll<HTMLElement>(focus.selector) ?? [])].find((c) => c.closest('[data-pb-key]') === blockEl);
+    match?.focus();
   }
 
   private persistent = new Map<string, HTMLElement>();
@@ -404,15 +442,46 @@ export class PlanBlockElement extends HTMLElement {
 
   // ---- Interaction -----------------------------------------------------
 
+  /** Live view of this element for the drag controller. */
+  private dragHost(): DragHost {
+    const el = this;
+    return {
+      get root() {
+        return el.root;
+      },
+      get container() {
+        return el.container;
+      },
+      get store() {
+        return el._store;
+      },
+      get readonly() {
+        return el.readonly;
+      },
+      move: (id, parent, after) => el._store?.move(id, { parent, after }),
+    };
+  }
+
   private listen(): void {
     this.listening = true;
     this.root.addEventListener('click', (event) => this.onClick(event as MouseEvent));
     this.root.addEventListener('change', (event) => this.onInputChange(event));
     this.root.addEventListener('submit', (event) => this.onSubmit(event as SubmitEvent));
+    this.root.addEventListener('pointerdown', (event) => this.drag.onPointerDown(event as PointerEvent));
     this.root.addEventListener('keydown', (event) => {
-      if ((event as KeyboardEvent).key === 'Escape' && this.editingKey) {
+      const key = (event as KeyboardEvent).key;
+      if (key === 'Escape' && this.editingKey) {
         this.editingKey = null;
         this.scheduleRender();
+        return;
+      }
+
+      // Arrow keys on a focused drag handle move the block.
+      const handle = (event.target as Element | null)?.closest<HTMLElement>('[data-pb-drag-handle]');
+      const blockEl = handle?.closest<HTMLElement>('[data-pb-key]');
+      if ((key === 'ArrowUp' || key === 'ArrowDown') && blockEl?.dataset.pbId && !this.readonly) {
+        event.preventDefault();
+        this.shift(blockEl.dataset.pbId, key === 'ArrowUp' ? -1 : 1);
       }
     });
   }
@@ -633,6 +702,11 @@ function toggleData(el: HTMLElement, name: string, on: boolean): void {
   else delete el.dataset[name];
 }
 
+/**
+ * Escape for use inside a double-quoted attribute selector value. (Not
+ * CSS.escape: that escapes leading digits, which every ULID has, and some
+ * selector engines mis-handle those escapes inside quotes.)
+ */
 function cssEscape(value: string): string {
-  return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(value) : value.replace(/["\\]/g, '\\$&');
+  return value.replace(/["\\]/g, '\\$&');
 }
