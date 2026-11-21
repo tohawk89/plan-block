@@ -17,6 +17,46 @@
                     "label": "Label",
                     "required": false,
                     "max": 80
+                },
+                {
+                    "name": "color",
+                    "type": "select",
+                    "label": "Colour",
+                    "required": false,
+                    "options": [
+                        {
+                            "value": "coral",
+                            "label": "Coral"
+                        },
+                        {
+                            "value": "amber",
+                            "label": "Amber"
+                        },
+                        {
+                            "value": "green",
+                            "label": "Green"
+                        },
+                        {
+                            "value": "teal",
+                            "label": "Teal"
+                        },
+                        {
+                            "value": "blue",
+                            "label": "Blue"
+                        },
+                        {
+                            "value": "purple",
+                            "label": "Purple"
+                        },
+                        {
+                            "value": "pink",
+                            "label": "Pink"
+                        },
+                        {
+                            "value": "gray",
+                            "label": "Gray"
+                        }
+                    ]
                 }
             ],
             "parents": [],
@@ -48,6 +88,46 @@
                     "label": "Label",
                     "required": false,
                     "max": 80
+                },
+                {
+                    "name": "color",
+                    "type": "select",
+                    "label": "Colour",
+                    "required": false,
+                    "options": [
+                        {
+                            "value": "coral",
+                            "label": "Coral"
+                        },
+                        {
+                            "value": "amber",
+                            "label": "Amber"
+                        },
+                        {
+                            "value": "green",
+                            "label": "Green"
+                        },
+                        {
+                            "value": "teal",
+                            "label": "Teal"
+                        },
+                        {
+                            "value": "blue",
+                            "label": "Blue"
+                        },
+                        {
+                            "value": "purple",
+                            "label": "Purple"
+                        },
+                        {
+                            "value": "pink",
+                            "label": "Pink"
+                        },
+                        {
+                            "value": "gray",
+                            "label": "Gray"
+                        }
+                    ]
                 }
             ],
             "parents": [],

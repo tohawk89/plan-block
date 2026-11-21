@@ -36,6 +36,8 @@ export interface PlanBlockProps {
   readonly?: boolean;
   /** Starting mode: "view" (normal) or "edit". Defaults to what the user last picked for this plan. */
   mode?: 'view' | 'edit';
+  /** "light" (default), "dark", or "auto" to follow the device. */
+  theme?: 'light' | 'dark' | 'auto';
   shadow?: boolean;
   noStyles?: boolean;
   labels?: Partial<Labels>;
@@ -120,6 +122,7 @@ export const PlanBlock = forwardRef<PlanBlockHandle, PlanBlockProps>(function Pl
     // Present-or-absent attributes; '' / undefined works in React 18 and 19.
     readonly: props.readonly ? '' : undefined,
     mode: props.mode,
+    theme: props.theme,
     shadow: props.shadow ? '' : undefined,
     'no-styles': props.noStyles ? '' : undefined,
   });

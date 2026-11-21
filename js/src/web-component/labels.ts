@@ -13,6 +13,11 @@ export interface Labels {
   editMode: string;
   /** The "⋯" button that opens a block's actions. */
   moreActions: string;
+  /** Colour picker of a day or ideas list, and its "use the default" choice. */
+  color: string;
+  autoColor: string;
+  /** Badge on the nth backup of a place. */
+  backup: (n: number) => string;
   newItem: (typeLabel: string) => string;
   day: (n: number) => string;
   pool: string;
@@ -59,6 +64,9 @@ export const defaultLabels: Labels = {
   viewMode: 'Normal',
   editMode: 'Edit',
   moreActions: 'More actions',
+  color: 'Colour',
+  autoColor: 'Auto',
+  backup: (n) => `Backup ${n}`,
   newItem: (type) => `New ${type.toLowerCase()}`,
   day: (n) => `Day ${n}`,
   pool: 'Ideas',

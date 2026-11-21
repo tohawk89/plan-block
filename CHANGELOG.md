@@ -4,6 +4,15 @@ All notable changes to this package are listed here. Versions follow
 [Semantic Versioning](https://semver.org); while below 1.0, minor versions
 may contain breaking changes.
 
+## Unreleased
+
+### Colours
+- **Coloured days.** Each day has a colour (coral, teal, purple, amber, blue, pink, green in turn) shown as a tinted header and border; ideas lists are gray. Pick another from the day's "⋯" menu or its edit form, stored in a new optional `color` field on days and ideas lists (validated against the palette). The server-rendered copy uses the same colours.
+- Days and ideas lists show a progress bar; a finished day gets a ✓ and a green bar.
+- Backups are numbered ("Backup 1", "Backup 2") in their day's colour.
+- **Dark theme**: `theme="dark"`, or `theme="auto"` to follow the device. Also a `theme` prop on the Vue and React wrappers.
+- Colours are `--pb-*` CSS variables (`--pb-teal`, `--pb-teal-soft`, `--pb-teal-strong`, …) for restyling.
+
 ## 0.2.0 - 2026-11-21
 
 ### Editor

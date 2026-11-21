@@ -7,6 +7,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\View\ComponentAttributeBag;
 use Tohawk89\PlanBlock\Fields\Field;
 use Tohawk89\PlanBlock\Models\Block;
+use Tohawk89\PlanBlock\Support\Palette;
 use Tohawk89\PlanBlock\Support\PlanTree;
 use Tohawk89\PlanBlock\Types\BlockType;
 
@@ -112,6 +113,12 @@ class BladeRenderer
     }
 
     /** @return array{state: string, done: int, total: int} */
+    /** Colour name for a day or ideas list (stored, or its default). */
+    public function color(array $target): ?string
+    {
+        return Palette::resolve($target['type'], $this->payload($target, 'color'), $target['day']['number'] ?? null);
+    }
+
     public function progress(array $target): array
     {
         return $target['progress'] ?? ['state' => 'none', 'done' => 0, 'total' => 0];

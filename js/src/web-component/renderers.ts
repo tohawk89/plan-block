@@ -2,6 +2,7 @@ import type { PlanStore } from '../client/store';
 import type { BlockData, FieldManifest, TypeManifest } from '../client/types';
 import { h } from './h';
 import type { Labels } from './labels';
+import { colorField, colorOf } from './palette';
 import { canContain } from './rules';
 
 export interface RenderContext {
@@ -132,8 +133,43 @@ function groupActions(ctx: RenderContext): HTMLElement | null {
   return h(
     'div',
     { class: 'pb-actions' },
-    blockMenu(ctx, [menuItem('edit', labels.edit), menuItem('move-up', labels.moveUp), menuItem('move-down', labels.moveDown), menuItem('delete', labels.delete, true)]),
+    blockMenu(ctx, [
+      menuItem('edit', labels.edit),
+      colorSwatches(ctx),
+      menuItem('move-up', labels.moveUp),
+      menuItem('move-down', labels.moveDown),
+      menuItem('delete', labels.delete, true),
+    ]),
   );
+}
+
+/** One-click colour choices for a day or ideas list, shown in its menu. */
+function colorSwatches(ctx: RenderContext): HTMLElement | null {
+  const field = colorField(ctx.store, ctx.target);
+  if (!field) return null;
+  const current = colorOf(ctx.store, ctx.target);
+
+  return h(
+    'div',
+    { class: 'pb-swatches', role: 'group', 'aria-label': ctx.labels.color },
+    ...(field.options ?? []).map((option) =>
+      h('button', {
+        type: 'button',
+        class: 'pb-swatch',
+        'data-pb-action': 'color',
+        'data-pb-color': String(option.value),
+        'aria-label': option.label,
+        title: option.label,
+        'aria-pressed': String(current === String(option.value)),
+      }),
+    ),
+  );
+}
+
+/** Progress as a small bar (decorative; the text next to it says the same). */
+function meter(done: number, total: number): HTMLElement {
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  return h('span', { class: 'pb-meter', 'aria-hidden': 'true' }, h('span', { class: 'pb-meter__fill', style: `width: ${percent}%` }));
 }
 
 /**
@@ -217,7 +253,7 @@ function editForm(ctx: RenderContext): HTMLElement {
   return h(
     'form',
     { class: 'pb-form', 'data-pb-form': '' },
-    ...(ctx.type?.fields ?? []).map((field) => fieldInput(field, target.payload[field.name])),
+    ...(ctx.type?.fields ?? []).map((field) => fieldInput(field, target.payload[field.name], labels)),
     h(
       'div',
       { class: 'pb-actions' },
@@ -227,7 +263,8 @@ function editForm(ctx: RenderContext): HTMLElement {
   );
 }
 
-function fieldInput(field: FieldManifest, value: unknown): HTMLElement {
+function fieldInput(field: FieldManifest, value: unknown, labels?: Labels): HTMLElement {
+  if (field.type === 'select' && field.name === 'color') return colorInput(field, value, labels);
   const common = { name: field.name, class: 'pb-input', required: field.required, 'data-pb-field': field.type };
   const current = value === null || value === undefined ? '' : String(value);
   let input: HTMLElement;
@@ -262,6 +299,34 @@ function fieldInput(field: FieldManifest, value: unknown): HTMLElement {
   return h('label', { class: 'pb-field' }, field.label, input);
 }
 
+/** A colour field as a row of swatch radio buttons, with "Auto" first. */
+function colorInput(field: FieldManifest, value: unknown, labels?: Labels): HTMLElement {
+  const current = typeof value === 'string' ? value : '';
+  const radio = (optionValue: string, label: string, extraClass: string) =>
+    h('input', {
+      type: 'radio',
+      name: field.name,
+      value: optionValue,
+      class: `pb-swatch${extraClass ? ` ${extraClass}` : ''}`,
+      'data-pb-color': optionValue || undefined,
+      'aria-label': label,
+      title: label,
+      '.checked': current === optionValue,
+    });
+
+  return h(
+    'fieldset',
+    { class: 'pb-field pb-swatch-field' },
+    h('legend', {}, field.label),
+    h(
+      'div',
+      { class: 'pb-swatches' },
+      field.required ? null : radio('', labels?.autoColor ?? 'Auto', 'pb-swatch--auto'),
+      ...(field.options ?? []).map((o) => radio(String(o.value), o.label, '')),
+    ),
+  );
+}
+
 function dayTitle(store: PlanStore, day: BlockData, labels: Labels): string {
   const label = typeof day.payload.label === 'string' && day.payload.label !== '' ? ` · ${day.payload.label}` : '';
   const number = day.day?.number ?? store.children(null).filter((b) => b.type === 'timeline').indexOf(day) + 1;
@@ -274,7 +339,7 @@ function formatDate(date: string | null): string | null {
   return Number.isNaN(parsed.getTime()) ? date : new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(parsed);
 }
 
-export const parts = { title, titleOf, iconButton, menu, menuItem, blockMenu, itemActions, groupActions, addButtons, homeOf, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
+export const parts = { title, titleOf, iconButton, menu, menuItem, blockMenu, itemActions, groupActions, colorSwatches, meter, addButtons, homeOf, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
 
 // ---- Default renderers --------------------------------------------------
 
@@ -306,6 +371,7 @@ const timeline: Renderer = (ctx) => {
         date ? h('span', { class: 'pb-muted' }, date) : null,
         linkBadge(ctx),
       ),
+      meter(progress.done, progress.total),
       h('span', { class: 'pb-progress', 'data-state': progress.state }, labels.progress(progress.done, progress.total)),
       groupActions(ctx),
     ),
@@ -328,6 +394,7 @@ const pool: Renderer = (ctx) => {
       { class: 'pb-group__header' },
       dragHandle(ctx),
       h('div', { class: 'pb-group__title' }, ctx.editing ? null : title(ctx, label), linkBadge(ctx)),
+      meter(progress.done, progress.total),
       h('span', { class: 'pb-progress' }, labels.poolProgress(progress.done, progress.total)),
       groupActions(ctx),
     ),
@@ -342,6 +409,7 @@ const place: Renderer = (ctx) => {
   const time = typeof target.payload.time === 'string' ? target.payload.time : null;
   const mapUrl = typeof target.payload.maps_url === 'string' ? target.payload.maps_url : null;
   const notes = typeof target.payload.notes === 'string' ? target.payload.notes : null;
+  const backupNumber = target.type === 'backup' && target.parent ? ctx.store.children(target.parent).filter((b) => b.type === 'backup').findIndex((b) => b.id === target.id) + 1 : 0;
 
   return h(
     'div',
@@ -359,6 +427,8 @@ const place: Renderer = (ctx) => {
           : h(
               'div',
               {},
+              backupNumber > 0 ? h('span', { class: 'pb-badge pb-badge--backup' }, labels.backup(backupNumber)) : null,
+              backupNumber > 0 ? ' ' : null,
               title(ctx),
               ' ',
               linkBadge(ctx),
