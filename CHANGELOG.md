@@ -4,7 +4,7 @@ All notable changes to this package are listed here. Versions follow
 [Semantic Versioning](https://semver.org); while below 1.0, minor versions
 may contain breaking changes.
 
-## Unreleased
+## 0.4.0 - 2026-11-21
 
 ### Plans with backups
 - **New `slot` block type ("Plan")** for things like Breakfast, Lunch or an activity: a category (breakfast, lunch, dinner, activity, stay, travel, other), optional title, time and notes. It sits in a day or ideas list and holds up to five places, ranked: the first is the main choice, the rest are backups.
