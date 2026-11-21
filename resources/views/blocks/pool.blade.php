@@ -1,6 +1,6 @@
 @php($progress = $pb->progress($target))
 @php($label = $pb->payload($target, 'label'))
-<section {{ $pb->attributes($block, $target, $isLink, $key)->class('pb-block pb-group pb-pool') }}>
+<section {{ $pb->attributes($block, $target, $isLink, $key, ['data-pb-color' => $pb->color($target)])->class('pb-block pb-group pb-pool') }}>
     <header class="pb-group__header">
         <div class="pb-group__title">
             <span class="pb-title">{{ is_string($label) && $label !== '' ? $label : __('plan-block::ui.pool') }}</span>

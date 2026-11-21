@@ -1,6 +1,6 @@
 @php($progress = $pb->progress($target))
 @php($date = $pb->date($target['day']['date'] ?? null))
-<section {{ $pb->attributes($block, $target, $isLink, $key)->class('pb-block pb-group pb-day') }}>
+<section {{ $pb->attributes($block, $target, $isLink, $key, ['data-pb-color' => $pb->color($target)])->class('pb-block pb-group pb-day') }}>
     <header class="pb-group__header">
         <input type="checkbox" class="pb-check" disabled @checked($progress['state'] === 'all') aria-label="{{ __('plan-block::ui.check_all') }}">
         <div class="pb-group__title">

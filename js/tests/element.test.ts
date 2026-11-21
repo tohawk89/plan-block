@@ -332,4 +332,60 @@ describe('<plan-block>', () => {
       expect(el.mode).toBe('edit');
     });
   });
+
+  describe('colours', () => {
+    it('gives days turns through the palette and ideas lists gray', async () => {
+      const { el } = await mount();
+
+      expect(block(el, ids.day1).dataset.pbColor).toBe('coral');
+      expect(block(el, ids.day2).dataset.pbColor).toBe('teal');
+      expect(block(el, ids.pool).dataset.pbColor).toBe('gray');
+      expect(block(el, ids.breakfast).dataset.pbColor).toBeUndefined();
+    });
+
+    it('sets a day colour from its menu in one click', async () => {
+      const { el, store, transport } = await mount();
+      const swatch = q(block(el, ids.day1), '.pb-menu--actions [data-pb-action="color"][data-pb-color="blue"]')!;
+      expect(q(block(el, ids.day1), '[data-pb-action="color"][aria-pressed="true"]')!.dataset.pbColor).toBe('coral');
+
+      swatch.click();
+      await settle();
+
+      expect(store.get(ids.day1)?.payload.color).toBe('blue');
+      expect(block(el, ids.day1).dataset.pbColor).toBe('blue');
+      expect(transport.sent.at(-1)!.commands[0]).toMatchObject({ type: 'update', block: ids.day1, args: { payload: { color: 'blue' } } });
+    });
+
+    it('shows the colour as swatches in the edit form, with Auto to go back to the default', async () => {
+      const { el, store } = await mount();
+      store.update(ids.day1, { color: 'pink' });
+      await settle();
+
+      q(block(el, ids.day1), '.pb-menu--actions [data-pb-action="edit"]')!.click();
+      await settle();
+
+      const form = q(block(el, ids.day1), '[data-pb-form]') as HTMLFormElement;
+      const radios = [...form.querySelectorAll<HTMLInputElement>('input[name="color"]')];
+      expect(radios.map((r) => r.value)).toEqual(['', 'coral', 'amber', 'green', 'teal', 'blue', 'purple', 'pink', 'gray']);
+      expect(radios.find((r) => r.checked)?.value).toBe('pink');
+
+      radios[0]!.checked = true;
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await settle();
+
+      expect(store.get(ids.day1)?.payload.color).toBeNull();
+      expect(block(el, ids.day1).dataset.pbColor).toBe('coral');
+    });
+
+    it('numbers backups and marks finished days', async () => {
+      const { el } = await mount();
+
+      expect(q(block(el, ids.backup), '.pb-badge--backup')!.textContent).toBe('Backup 1');
+      // The main place has no badge: the only one inside it is its backup's.
+      expect(block(el, ids.breakfast).querySelectorAll('.pb-badge--backup')).toHaveLength(1);
+      // Day 1 is 1/1 done in the fixture.
+      expect(block(el, ids.day1).hasAttribute('data-pb-complete')).toBe(true);
+      expect(q(block(el, ids.day1), '.pb-meter__fill')!.getAttribute('style')).toContain('100%');
+    });
+  });
 });

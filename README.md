@@ -46,11 +46,17 @@ Show the editor. No npm needed: the package serves its own script.
 </body>
 ```
 
-The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Blocks reorder by dragging their handle (mouse, touch or pen) or with the arrow keys on a focused handle. Options: `readonly`, `mode`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
+The component embeds the plan's data, so the editor appears without extra requests, and renders a read-only copy for visitors without JavaScript. Blocks reorder by dragging their handle (mouse, touch or pen) or with the arrow keys on a focused handle. Options: `readonly`, `mode`, `theme`, `shadow` (Shadow DOM), `no-styles`, `:fallback="false"`.
 
 #### Normal and edit modes
 
 The editor has a **Normal / Edit** switch in its toolbar. Normal mode is for reading the plan and ticking things off: no drag handles, add buttons or delete controls. Edit mode shows them, with each block's actions (edit, move, skip, delete) in a "⋯" menu. A plan with blocks opens in normal mode and an empty plan in edit mode; after that, each browser remembers the last mode per plan. Set `mode="view"` or `mode="edit"` to choose the starting mode. Listen for `plan-block:mode` to react to switches, or read and set `element.mode`. `readonly` always means normal mode with no switch.
+
+#### Colours and dark theme
+
+Each day gets a colour, taking turns through coral, teal, purple, amber, blue, pink and green; ideas lists are gray. In edit mode, pick another colour from the day's "⋯" menu or its edit form ("Auto" goes back to the default). The colour is stored in the block's `color` field, so it shows for everyone and in the server-rendered copy. Backups are numbered ("Backup 1") and each day shows a progress bar.
+
+Add `theme="dark"` for a dark editor, or `theme="auto"` to follow the device setting (default: light). To restyle, override the `--pb-*` variables, e.g. `--pb-teal`, `--pb-teal-soft` (header tint) and `--pb-teal-strong` (text on the tint).
 
 Custom renderers get `ctx.mode` and `ctx.canEdit` (true only in edit mode and not readonly). Use `canEdit` to decide whether to show editing controls: `ctx.readonly` alone is still true only for readonly plans.
 
@@ -103,7 +109,7 @@ export default function Trip({ planBlock }) {
 }
 ```
 
-Props: `initial` or `plan` (ULID), `endpoint`, `readonly`, `mode`, `shadow`, `noStyles`, `labels`, `store`, `transport`. Events: `ready`, `command`, `error`, `sync`. React 18 and 19, Vue 3.3+.
+Props: `initial` or `plan` (ULID), `endpoint`, `readonly`, `mode`, `theme`, `shadow`, `noStyles`, `labels`, `store`, `transport`. Events: `ready`, `command`, `error`, `sync`. React 18 and 19, Vue 3.3+.
 
 For a completely custom UI, use the headless store directly: `usePlanStore({ initial })` returns the store and a live snapshot (`usePlanSnapshot(store)` for an existing store). Call `store.check(id)`, `store.move(id, { parent, after })` and so on; changes appear instantly and are saved in the background.
 

@@ -6,6 +6,7 @@ import type { BlockData, CommandError, FieldManifest, Manifest, PlanResponse } f
 import { h } from './h';
 import { DragController, type DragHost } from './drag';
 import { defaultLabels, type Labels } from './labels';
+import { colorOf } from './palette';
 import { parts, rendererFor, type RenderContext } from './renderers';
 import css from './styles.css';
 
@@ -27,7 +28,8 @@ let documentStylesAdopted = false;
  * <plan-block plan="01J..." endpoint="/plan-block"></plan-block>
  *
  * Attributes: plan, endpoint (default "/plan-block"), readonly, mode
- * ("view" or "edit": the starting mode), shadow (render in Shadow DOM),
+ * ("view" or "edit": the starting mode), theme ("dark", or "auto" to
+ * follow the device), shadow (render in Shadow DOM),
  * no-styles (skip the default stylesheet).
  * Properties: store (inject your own PlanStore), labels (override strings),
  * mode (current mode; setting it switches and remembers it for this plan).
@@ -560,6 +562,10 @@ export class PlanBlockElement extends HTMLElement {
       toggleData(el, 'pbChecked', target.checked);
       toggleData(el, 'pbDone', target.done);
       toggleData(el, 'pbExcluded', block.excluded);
+      toggleData(el, 'pbComplete', target.progress?.state === 'all' && target.progress.total > 0);
+      const color = colorOf(store, target);
+      if (color) el.dataset.pbColor = color;
+      else delete el.dataset.pbColor;
 
       entry = { signature, el, children };
       this.cache.set(key, entry);
@@ -686,6 +692,11 @@ export class PlanBlockElement extends HTMLElement {
         return store.exclude(id);
       case 'include':
         return store.include(id);
+      case 'color': {
+        const target = store.resolve(id);
+        if (target && target.payload.color !== el.dataset.pbColor) store.update(target.id, { color: el.dataset.pbColor ?? null });
+        return;
+      }
       case 'move-up':
       case 'move-down':
         return this.shift(id, action === 'move-up' ? -1 : 1);
