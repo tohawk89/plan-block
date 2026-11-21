@@ -9,6 +9,16 @@ import type { BlockData, FieldManifest } from '../client/types';
 export const DAY_ROTATION = ['coral', 'teal', 'purple', 'amber', 'blue', 'pink', 'green'] as const;
 export const POOL_DEFAULT = 'gray';
 
+/** Suggested start time for a new plan of each category. */
+export const CATEGORY_TIMES: Record<string, string> = {
+  breakfast: '08:00',
+  lunch: '12:30',
+  dinner: '19:30',
+  activity: '10:00',
+  stay: '15:00',
+  travel: '09:00',
+};
+
 /** The type's colour field, if it has one. */
 export function colorField(store: PlanStore, block: BlockData): FieldManifest | undefined {
   return store.type(block.type)?.fields.find((f) => f.name === 'color' && f.type === 'select');

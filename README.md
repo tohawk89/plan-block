@@ -52,6 +52,24 @@ The component embeds the plan's data, so the editor appears without extra reques
 
 The editor has a **Normal / Edit** switch in its toolbar. Normal mode is for reading the plan and ticking things off: no drag handles, add buttons or delete controls. Edit mode shows them, with each block's actions (edit, move, skip, delete) in a "⋯" menu. A plan with blocks opens in normal mode and an empty plan in edit mode; after that, each browser remembers the last mode per plan. Set `mode="view"` or `mode="edit"` to choose the starting mode. Listen for `plan-block:mode` to react to switches, or read and set `element.mode`. `readonly` always means normal mode with no switch.
 
+#### Plans with backups
+
+A day holds **plans** (Breakfast, Lunch, Activity…) and each plan holds up to five place options, ranked: the first is the main choice (★ Main), the rest are backups (Backup 1, Backup 2…). In edit mode, "+ Add" on a day lists the plan categories; picking one creates the plan with a suggested time and puts the cursor in its "Where?" box: type a place, press Enter, type a backup, press Enter. "Make main choice" in an option's "⋯" menu (or dragging it to the top) promotes a backup.
+
+In normal mode a plan shows its main choice with the backups folded away. Ticking an option picks it and unticks the others ("✓ Went to Kedai B · Backup 1"); the plan counts as one done item for its day. The plan's own checkbox ticks the main choice, and a day's "check all" ticks each plan's main choice unless another option was already picked.
+
+From PHP:
+
+```php
+$plan->commands()
+    ->create('slot', $day, payload: ['category' => 'breakfast', 'time' => '08:00'], id: $breakfast)
+    ->create('place', $breakfast, payload: ['name' => 'Kedai A'], id: $a)
+    ->create('place', $breakfast, $a, ['name' => 'Kedai B'])
+    ->run();
+```
+
+Places with nested `backup` blocks keep working as before.
+
 #### Colours and dark theme
 
 Each day gets a colour, taking turns through coral, teal, purple, amber, blue, pink and green; ideas lists are gray. In edit mode, pick another colour from the day's "⋯" menu or its edit form ("Auto" goes back to the default). The colour is stored in the block's `color` field, so it shows for everyone and in the server-rendered copy. Backups are numbered ("Backup 1") and each day shows a progress bar.

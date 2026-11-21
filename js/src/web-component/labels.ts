@@ -18,6 +18,18 @@ export interface Labels {
   autoColor: string;
   /** Badge on the nth backup of a place. */
   backup: (n: number) => string;
+  /** Plans (Breakfast, Lunch…) and their ranked place options. */
+  main: string;
+  makeMain: string;
+  wentTo: (name: string) => string;
+  noPlaceYet: string;
+  backupCount: (n: number) => string;
+  showOptions: string;
+  hideOptions: string;
+  quickAddFirst: string;
+  quickAddMore: string;
+  quickAddEmpty: string;
+  addPlace: string;
   newItem: (typeLabel: string) => string;
   day: (n: number) => string;
   pool: string;
@@ -67,6 +79,17 @@ export const defaultLabels: Labels = {
   color: 'Colour',
   autoColor: 'Auto',
   backup: (n) => `Backup ${n}`,
+  main: 'Main',
+  makeMain: 'Make main choice',
+  wentTo: (name) => `Went to ${name}`,
+  noPlaceYet: 'No place yet',
+  backupCount: (n) => (n === 1 ? '1 backup' : `${n} backups`),
+  showOptions: 'Options',
+  hideOptions: 'Hide options',
+  quickAddFirst: 'Where? Type a place and press Enter',
+  quickAddMore: 'Add a backup and press Enter',
+  quickAddEmpty: 'Type a place name first',
+  addPlace: 'Add a place to this plan',
   newItem: (type) => `New ${type.toLowerCase()}`,
   day: (n) => `Day ${n}`,
   pool: 'Ideas',

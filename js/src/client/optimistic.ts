@@ -67,7 +67,9 @@ export function applyCommand(blocks: BlockMap, command: Command, manifest: Manif
     case 'check':
     case 'uncheck': {
       const target = resolve(blocks, command.block);
-      if (target) setChecked(blocks, target, command.type === 'check', manifest);
+      if (!target) return;
+      setChecked(blocks, target, command.type === 'check', manifest);
+      if (command.type === 'check') uncheckOtherChoices(blocks, target, manifest);
       return;
     }
 
@@ -80,6 +82,15 @@ export function applyCommand(blocks: BlockMap, command: Command, manifest: Manif
         if (child.excluded) continue;
         const target = resolve(blocks, child.id);
         if (!target) continue;
+        // A plan: tick its main option, unless one is already chosen.
+        if (check && manifest?.types[target.type]?.rule === 'one') {
+          const options = childrenOf(blocks, target.id).filter((o) => o.type !== 'link' && manifest.types[o.type]?.checkable);
+          const main = options.find((o) => !o.excluded);
+          if (main && !options.some((o) => o.checked)) {
+            setChecked(blocks, main, true, manifest);
+          }
+          continue;
+        }
         // Unchecking goes deepest first, so a place no longer looks done via a backup.
         const targets = check ? [target] : [...descendantsOf(blocks, target.id).reverse(), target];
         for (const item of targets) {
@@ -152,6 +163,15 @@ function setChecked(blocks: BlockMap, block: BlockData, checked: boolean, manife
     checked_at: checked ? new Date().toISOString() : null,
     done: checked || anyChildDone,
   });
+}
+
+/** In a group where only one child can be chosen, checking one unchecks the others. */
+function uncheckOtherChoices(blocks: BlockMap, target: BlockData, manifest: Manifest | null): void {
+  const parent = target.parent ? blocks.get(target.parent) : undefined;
+  if (!parent || manifest?.types[parent.type]?.rule !== 'one') return;
+  for (const sibling of childrenOf(blocks, parent.id)) {
+    if (sibling.id !== target.id && sibling.checked && sibling.type !== 'link') setChecked(blocks, sibling, false, manifest);
+  }
 }
 
 /** Same gapped placement as the server; only for display until confirmed. */

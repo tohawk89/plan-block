@@ -2,7 +2,7 @@ import type { PlanStore } from '../client/store';
 import type { BlockData, FieldManifest, TypeManifest } from '../client/types';
 import { h } from './h';
 import type { Labels } from './labels';
-import { colorField, colorOf } from './palette';
+import { CATEGORY_TIMES, colorField, colorOf } from './palette';
 import { canContain } from './rules';
 
 export interface RenderContext {
@@ -23,6 +23,8 @@ export interface RenderContext {
   mode: 'view' | 'edit';
   /** Show editing controls: not readonly and in edit mode. */
   canEdit: boolean;
+  /** A plan's options are unfolded (normal mode; edit mode always shows them). */
+  expanded: boolean;
   store: PlanStore;
   labels: Labels;
   h: typeof h;
@@ -98,7 +100,7 @@ function blockMenu(ctx: RenderContext, items: (HTMLElement | null)[]): HTMLEleme
   return menu(h('span', { 'aria-hidden': 'true' }, '⋯'), ctx.labels.moreActions, items, 'pb-menu--actions');
 }
 
-function itemActions(ctx: RenderContext, options: { linkable?: boolean } = {}): HTMLElement | null {
+function itemActions(ctx: RenderContext, options: { linkable?: boolean; extra?: (HTMLElement | null)[] } = {}): HTMLElement | null {
   if (!ctx.canEdit) return null;
   const { labels, block, store } = ctx;
   const days = store.children(null).filter((b) => b.type === 'timeline');
@@ -117,6 +119,7 @@ function itemActions(ctx: RenderContext, options: { linkable?: boolean } = {}): 
         )
       : null,
     blockMenu(ctx, [
+      ...(options.extra ?? []),
       editable ? menuItem('edit', labels.edit) : null,
       menuItem('move-up', labels.moveUp),
       menuItem('move-down', labels.moveDown),
@@ -339,7 +342,7 @@ function formatDate(date: string | null): string | null {
   return Number.isNaN(parsed.getTime()) ? date : new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(parsed);
 }
 
-export const parts = { title, titleOf, iconButton, menu, menuItem, blockMenu, itemActions, groupActions, colorSwatches, meter, addButtons, homeOf, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
+export const parts = { title, titleOf, iconButton, menu, menuItem, blockMenu, itemActions, groupActions, colorSwatches, meter, addButtons, groupAddButtons, optionRank, rankBadge, homeOf, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
 
 // ---- Default renderers --------------------------------------------------
 
@@ -377,7 +380,7 @@ const timeline: Renderer = (ctx) => {
     ),
     ctx.editing ? h('div', { class: 'pb-children' }, editForm(ctx)) : null,
     ctx.children,
-    addButtons(ctx, ['place', 'note', ...customTypes(ctx)]),
+    groupAddButtons(ctx),
   );
 };
 
@@ -400,7 +403,7 @@ const pool: Renderer = (ctx) => {
     ),
     ctx.editing ? h('div', { class: 'pb-children' }, editForm(ctx)) : null,
     ctx.children,
-    addButtons(ctx, ['place', 'note', ...customTypes(ctx)]),
+    groupAddButtons(ctx),
   );
 };
 
@@ -410,6 +413,7 @@ const place: Renderer = (ctx) => {
   const mapUrl = typeof target.payload.maps_url === 'string' ? target.payload.maps_url : null;
   const notes = typeof target.payload.notes === 'string' ? target.payload.notes : null;
   const backupNumber = target.type === 'backup' && target.parent ? ctx.store.children(target.parent).filter((b) => b.type === 'backup').findIndex((b) => b.id === target.id) + 1 : 0;
+  const rank = optionRank(ctx.store, target);
 
   return h(
     'div',
@@ -428,7 +432,8 @@ const place: Renderer = (ctx) => {
               'div',
               {},
               backupNumber > 0 ? h('span', { class: 'pb-badge pb-badge--backup' }, labels.backup(backupNumber)) : null,
-              backupNumber > 0 ? ' ' : null,
+              rank !== null ? rankBadge(rank, labels) : null,
+              backupNumber > 0 || rank !== null ? ' ' : null,
               title(ctx),
               ' ',
               linkBadge(ctx),
@@ -439,12 +444,162 @@ const place: Renderer = (ctx) => {
               notes ? h('div', { class: 'pb-notes' }, notes) : null,
             ),
       ),
+      ctx.editing ? null : itemActions(ctx, { linkable: rank === null, extra: rank ? [menuItem('make-main', labels.makeMain)] : [] }),
+    ),
+    ctx.children,
+    // A plan's options are already alternatives: no backups of backups.
+    ctx.editing || ctx.isLink || rank !== null ? null : addButtons(ctx, ['backup', 'note']),
+  );
+};
+
+/** Position among a plan's place options (0 = main), or null outside a plan. */
+function optionRank(store: PlanStore, block: BlockData): number | null {
+  const parent = block.parent ? store.get(block.parent) : undefined;
+  if (!parent || store.type(parent.type)?.rule !== 'one' || block.type !== 'place') return null;
+  const index = store.children(parent.id).filter((b) => b.type === 'place').findIndex((b) => b.id === block.id);
+  return index < 0 ? null : index;
+}
+
+function rankBadge(rank: number, labels: Labels): HTMLElement {
+  return rank === 0 ? h('span', { class: 'pb-badge pb-badge--main' }, `★ ${labels.main}`) : h('span', { class: 'pb-badge pb-badge--backup' }, labels.backup(rank));
+}
+
+/** Category of a plan, and its label from the manifest. */
+function categoryOf(ctx: RenderContext, block: BlockData): { value: string; label: string } {
+  const value = typeof block.payload.category === 'string' && block.payload.category !== '' ? block.payload.category : 'other';
+  const field = ctx.store.type(block.type)?.fields.find((f) => f.name === 'category');
+  const label = field?.options?.find((o) => String(o.value) === value)?.label ?? ctx.store.type(block.type)?.label ?? value;
+  return { value, label };
+}
+
+/**
+ * A plan (Breakfast, Lunch…) with ranked place options. Normal mode shows
+ * the main choice, or the one picked, with the backups folded away; edit
+ * mode lists every option and a box to add more by typing.
+ */
+const slot: Renderer = (ctx) => {
+  const { target, labels, store } = ctx;
+  const category = categoryOf(ctx, target);
+  const titleText = typeof target.payload.title === 'string' && target.payload.title !== '' ? target.payload.title : category.label;
+  const time = typeof target.payload.time === 'string' ? target.payload.time : null;
+  const notes = typeof target.payload.notes === 'string' ? target.payload.notes : null;
+  const options = store.children(target.id).filter((b) => b.type === 'place');
+  const chosenIndex = options.findIndex((o) => o.checked);
+  const chosen = chosenIndex >= 0 ? options[chosenIndex] : undefined;
+  const main = options.find((o) => !o.excluded);
+  const nameOf = (b: BlockData) => (typeof b.payload.name === 'string' && b.payload.name !== '' ? b.payload.name : (store.type(b.type)?.label ?? ''));
+  const max = ctx.type?.children.max.place;
+  const showOptions = ctx.canEdit || ctx.expanded;
+
+  // The element owns this container; fold it in normal mode.
+  ctx.children.hidden = !showOptions;
+
+  const summary = chosen
+    ? h('div', { class: 'pb-slot__summary pb-slot__summary--done' }, `✓ ${labels.wentTo(nameOf(chosen))}`, chosenIndex > 0 ? ' ' : null, chosenIndex > 0 ? h('span', { class: 'pb-badge pb-badge--backup' }, labels.backup(chosenIndex)) : null)
+    : h('div', { class: 'pb-slot__summary' }, main ? nameOf(main) : h('span', { class: 'pb-muted' }, labels.noPlaceYet));
+
+  const toggle =
+    !ctx.canEdit && (options.length > 1 || chosen)
+      ? h(
+          'button',
+          { type: 'button', class: 'pb-chip', 'data-pb-action': 'toggle-expand', 'aria-expanded': String(ctx.expanded) },
+          ctx.expanded ? labels.hideOptions : options.length > 1 ? labels.backupCount(options.length - 1) : labels.showOptions,
+          h('span', { 'aria-hidden': 'true' }, ctx.expanded ? ' ▴' : ' ▾'),
+        )
+      : null;
+
+  const quickAdd =
+    ctx.canEdit && !ctx.isLink && !ctx.editing && (max === undefined || options.length < max)
+      ? h('input', {
+          type: 'text',
+          class: 'pb-input pb-quick-add',
+          'data-pb-action': 'quick-add',
+          placeholder: options.length ? labels.quickAddMore : labels.quickAddFirst,
+          'aria-label': labels.addPlace,
+          maxlength: store.type('place')?.fields.find((f) => f.name === 'name')?.max,
+          enterkeyhint: 'done',
+        })
+      : null;
+
+  return h(
+    'div',
+    { class: 'pb-item pb-slot', 'data-pb-category': category.value },
+    h(
+      'div',
+      { class: 'pb-item__row' },
+      dragHandle(ctx),
+      h('input', {
+        type: 'checkbox',
+        class: 'pb-check',
+        'data-pb-action': 'toggle-slot',
+        '.checked': Boolean(chosen),
+        'aria-label': labels.markDone(titleText),
+        disabled: ctx.readonly || !main,
+      }),
+      h('span', { class: 'pb-slot__icon', 'aria-hidden': 'true' }),
+      h(
+        'div',
+        { class: 'pb-item__main' },
+        ctx.editing
+          ? editForm(ctx)
+          : h(
+              'div',
+              {},
+              h('div', { class: 'pb-slot__heading' }, title(ctx, titleText), time ? h('span', { class: 'pb-muted' }, time) : null, linkBadge(ctx)),
+              showOptions && !chosen ? null : summary,
+              toggle,
+              notes ? h('div', { class: 'pb-notes' }, notes) : null,
+            ),
+      ),
       ctx.editing ? null : itemActions(ctx, { linkable: true }),
     ),
     ctx.children,
-    ctx.editing || ctx.isLink ? null : addButtons(ctx, ['backup', 'note']),
+    quickAdd,
   );
 };
+
+/**
+ * "+ Add" for a day or ideas list: plan categories first (Breakfast,
+ * Lunch…), then single places, notes and custom types.
+ */
+function groupAddButtons(ctx: RenderContext): HTMLElement | null {
+  if (!ctx.canEdit) return null;
+  const items: HTMLElement[] = [];
+  const parent = ctx.target.id;
+
+  if (canAdd(ctx, 'slot')) {
+    const field = ctx.store.type('slot')?.fields.find((f) => f.name === 'category');
+    for (const option of field?.options ?? []) {
+      const value = String(option.value);
+      const time = CATEGORY_TIMES[value];
+      items.push(
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'pb-menu__item pb-menu__item--plan',
+            'data-pb-action': 'add',
+            'data-pb-type': 'slot',
+            'data-pb-parent': parent,
+            'data-pb-payload': JSON.stringify(time ? { category: value, time } : { category: value }),
+            'data-pb-focus': 'quick-add',
+            'data-pb-category': value,
+          },
+          h('span', { class: 'pb-slot__icon', 'aria-hidden': 'true' }),
+          option.label,
+        ),
+      );
+    }
+  }
+
+  const others = ['place', 'note', ...customTypes(ctx)].filter((key) => canAdd(ctx, key));
+  if (items.length && others.length) items.push(h('div', { class: 'pb-menu__divider', role: 'separator' }));
+  for (const key of others) {
+    items.push(h('button', { type: 'button', class: 'pb-menu__item', 'data-pb-action': 'add', 'data-pb-type': key, 'data-pb-parent': parent }, ctx.store.type(key)?.label ?? key));
+  }
+
+  return items.length ? h('div', { class: 'pb-footer' }, menu(ctx.labels.addMenu, null, items, 'pb-menu--add')) : null;
+}
 
 const note: Renderer = (ctx) =>
   h(
@@ -477,8 +632,8 @@ const genericItem: Renderer = (ctx) =>
 
 /** Registered custom content types that may go in this group. */
 function customTypes(ctx: RenderContext): string[] {
-  const builtIn = ['timeline', 'pool', 'link', 'place', 'backup', 'note'];
+  const builtIn = ['timeline', 'pool', 'link', 'place', 'backup', 'note', 'slot'];
   return Object.keys(ctx.store.manifest?.types ?? {}).filter((key) => !builtIn.includes(key));
 }
 
-const defaults: Record<string, Renderer> = { timeline, pool, place, backup: place, note };
+const defaults: Record<string, Renderer> = { timeline, pool, place, backup: place, note, slot };

@@ -3,6 +3,7 @@
 namespace Tohawk89\PlanBlock\Actions;
 
 use Tohawk89\PlanBlock\Events\BlockChecked;
+use Tohawk89\PlanBlock\Events\BlockUnchecked;
 use Tohawk89\PlanBlock\Exceptions\CommandRejected;
 use Tohawk89\PlanBlock\Models\Block;
 use Tohawk89\PlanBlock\Support\Context;
@@ -54,5 +55,30 @@ class CheckBlock extends Action
 
         $ctx->changes->touch($target);
         $ctx->changes->event(new BlockChecked($target, $ctx->user));
+
+        $this->uncheckOtherChoices($ctx, $target);
+    }
+
+    /**
+     * In a group where only one child can be chosen (a plan's options),
+     * checking one unchecks the others.
+     */
+    protected function uncheckOtherChoices(Context $ctx, Block $target): void
+    {
+        $tree = $ctx->tree();
+        $parent = $tree->parent($tree->find($target->id) ?? $target);
+        if (! $parent || $tree->type($parent)->groupRule() !== GroupRule::One) {
+            return;
+        }
+
+        foreach ($tree->children($parent) as $sibling) {
+            if ($sibling->id === $target->id || $sibling->checked_at === null || $sibling->isLink()) {
+                continue;
+            }
+
+            $sibling->forceFill(['checked_at' => null, 'checked_by' => null])->save();
+            $ctx->changes->touch($sibling);
+            $ctx->changes->event(new BlockUnchecked($sibling, $ctx->user));
+        }
     }
 }

@@ -10,6 +10,7 @@ use Tohawk89\PlanBlock\Models\Block;
 use Tohawk89\PlanBlock\Support\Palette;
 use Tohawk89\PlanBlock\Support\PlanTree;
 use Tohawk89\PlanBlock\Types\BlockType;
+use Tohawk89\PlanBlock\Types\BuiltIn\SlotType;
 
 /**
  * Renders a plan with Blade views, read-only. Each type's view comes from
@@ -113,6 +114,54 @@ class BladeRenderer
     }
 
     /** @return array{state: string, done: int, total: int} */
+    /** A plan's own title, else its category's label. */
+    public function slotTitle(array $target): string
+    {
+        $title = $this->payload($target, 'title');
+        if (is_string($title) && $title !== '') {
+            return $title;
+        }
+
+        $category = $this->payload($target, 'category');
+
+        return SlotType::CATEGORIES[is_string($category) ? $category : 'other'] ?? SlotType::CATEGORIES['other'];
+    }
+
+    /**
+     * Position of a place among its plan's options: 0 for the main choice,
+     * 1 for the first backup... Null outside a plan.
+     */
+    public function optionRank(Block $model): ?int
+    {
+        $parent = $this->tree->parent($model);
+        if (! $parent || $parent->block_type !== SlotType::$key) {
+            return null;
+        }
+
+        $options = array_values(array_filter($this->tree->children($parent), fn (Block $b) => $b->block_type === 'place'));
+        $index = array_search($model->id, array_map(fn (Block $b) => $b->id, $options), true);
+
+        return $index === false ? null : $index;
+    }
+
+    /**
+     * The option ticked in a plan, with its rank.
+     *
+     * @return array{name: string, rank: int}|null
+     */
+    public function chosenOption(Block $slot): ?array
+    {
+        foreach ($this->tree->children($slot) as $child) {
+            if ($child->block_type === 'place' && $child->checked_at !== null) {
+                $name = $child->payload['name'] ?? '';
+
+                return ['name' => is_string($name) ? $name : '', 'rank' => $this->optionRank($child) ?? 0];
+            }
+        }
+
+        return null;
+    }
+
     /** Colour name for a day or ideas list (stored, or its default). */
     public function color(array $target): ?string
     {

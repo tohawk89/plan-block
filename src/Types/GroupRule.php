@@ -13,6 +13,11 @@ enum GroupRule: string
     /** Done when the block itself or any checkable child is checked (place with backups). */
     case Any = 'any';
 
+    /**
+     * Done when one checkable child is checked; checking a child unchecks
+     * the others (a plan's place options).
+     */
+    case One = 'one';
     /** Progress only, never done (pool). */
     case Count = 'count';
 

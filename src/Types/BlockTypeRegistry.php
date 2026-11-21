@@ -11,6 +11,7 @@ use Tohawk89\PlanBlock\Types\BuiltIn\LinkType;
 use Tohawk89\PlanBlock\Types\BuiltIn\NoteType;
 use Tohawk89\PlanBlock\Types\BuiltIn\PlaceType;
 use Tohawk89\PlanBlock\Types\BuiltIn\PoolType;
+use Tohawk89\PlanBlock\Types\BuiltIn\SlotType;
 use Tohawk89\PlanBlock\Types\BuiltIn\TimelineType;
 
 class BlockTypeRegistry
@@ -24,7 +25,7 @@ class BlockTypeRegistry
     {
         $registry = new self;
 
-        foreach ([TimelineType::class, PoolType::class, LinkType::class, PlaceType::class, BackupType::class, NoteType::class] as $class) {
+        foreach ([TimelineType::class, PoolType::class, LinkType::class, PlaceType::class, BackupType::class, NoteType::class, SlotType::class] as $class) {
             $registry->put(new $class);
         }
 

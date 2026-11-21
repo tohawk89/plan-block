@@ -51,7 +51,7 @@ export interface FieldManifest {
   options?: Array<{ value: string | number; label: string }>;
 }
 
-export type GroupRule = 'all' | 'any' | 'count' | 'none';
+export type GroupRule = 'all' | 'any' | 'one' | 'count' | 'none';
 
 export interface TypeManifest {
   key: string;
