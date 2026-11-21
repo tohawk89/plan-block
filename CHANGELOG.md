@@ -4,6 +4,19 @@ All notable changes to this package are listed here. Versions follow
 [Semantic Versioning](https://semver.org); while below 1.0, minor versions
 may contain breaking changes.
 
+## Unreleased
+
+### Editor
+- **Normal and edit modes.** A Normal / Edit switch in the toolbar. Normal mode hides drag handles, add buttons and block actions, so the plan reads as a finished itinerary while checkboxes still work. A plan with blocks starts in normal mode and an empty plan in edit mode; the last choice is remembered per plan in the browser. New `mode` attribute and property, `plan-block:mode` event, `mode` prop on the Vue and React wrappers, and `ctx.mode` / `ctx.canEdit` for custom renderers.
+- Block actions (edit, move up, move down, skip, delete) moved into a single "⋯" menu per block.
+- When a block can hold more than one type, one "+ Add" menu replaces the row of "+ Place", "+ Note"… buttons.
+- Clearer wording: pools are labelled "Ideas", "Exclude" is "Skip" (and "Undo skip"), and a linked copy shows where the original lives ("Also in Day 1") instead of "linked".
+
+### Breaking
+- The editor now opens plans that have blocks in normal mode. Add `mode="edit"` to keep the previous always-editing behaviour.
+- Custom renderers that hide controls with `ctx.readonly` keep showing them in normal mode; switch to `ctx.canEdit`.
+- Day and pool cards no longer use `overflow: hidden` (menus need to open past their edge).
+
 ## 0.1.0 - 2026-11-18
 
 First release.

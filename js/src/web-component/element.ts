@@ -26,16 +26,18 @@ let documentStylesAdopted = false;
 /**
  * <plan-block plan="01J..." endpoint="/plan-block"></plan-block>
  *
- * Attributes: plan, endpoint (default "/plan-block"), readonly, shadow
- * (render in Shadow DOM), no-styles (skip the default stylesheet).
- * Properties: store (inject your own PlanStore), labels (override strings).
+ * Attributes: plan, endpoint (default "/plan-block"), readonly, mode
+ * ("view" or "edit": the starting mode), shadow (render in Shadow DOM),
+ * no-styles (skip the default stylesheet).
+ * Properties: store (inject your own PlanStore), labels (override strings),
+ * mode (current mode; setting it switches and remembers it for this plan).
  *
  * Emits (bubbling, composed): plan-block:<command> (e.g. plan-block:check,
  * plan-block:check-all, plan-block:delete), plan-block:error, plan-block:sync,
- * plan-block:ready.
+ * plan-block:ready, plan-block:mode.
  */
 export class PlanBlockElement extends HTMLElement {
-  static observedAttributes = ['plan', 'endpoint', 'readonly'];
+  static observedAttributes = ['plan', 'endpoint', 'readonly', 'mode'];
 
   private _store: PlanStore | null = null;
   private ownsStore = false;
@@ -51,6 +53,9 @@ export class PlanBlockElement extends HTMLElement {
   private renderScheduled = false;
   private state: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
   private listening = false;
+  /** Chosen mode; null until resolved for the current plan. */
+  private _mode: Mode | null = null;
+  private focusModeToggle = false;
 
   get store(): PlanStore | null {
     return this._store;
@@ -82,6 +87,7 @@ export class PlanBlockElement extends HTMLElement {
   set labels(labels: Partial<Labels>) {
     this._labels = { ...defaultLabels, ...labels };
     this.cache.clear();
+    this.persistent.clear();
     this.scheduleRender();
   }
 
@@ -89,8 +95,59 @@ export class PlanBlockElement extends HTMLElement {
     return this.hasAttribute('readonly');
   }
 
+  /**
+   * "view" (normal: read and tick off) or "edit" (add, rearrange, delete).
+   * Starts from the mode attribute, else what this browser last used for
+   * the plan, else edit for an empty plan and view otherwise. Always
+   * "view" when readonly.
+   */
+  get mode(): Mode {
+    if (this.isReadOnly) return 'view';
+    return this._mode ?? this.initialMode();
+  }
+
+  set mode(mode: Mode) {
+    if (mode !== 'view' && mode !== 'edit') return;
+    const changed = mode !== this.mode;
+    this._mode = mode;
+    this.rememberMode(mode);
+    if (this.getAttribute('mode') !== mode) this.setAttribute('mode', mode);
+    if (!changed) return;
+    if (mode === 'view') this.editingKey = null;
+    this.cache.clear();
+    this.scheduleRender();
+    this.emit('mode', { mode });
+  }
+
+  /** Editing controls are shown: not readonly and in edit mode. */
+  get canEdit(): boolean {
+    return !this.isReadOnly && this.mode === 'edit';
+  }
+
+  private initialMode(): Mode {
+    const attr = this.getAttribute('mode');
+    if (attr === 'view' || attr === 'edit') return attr;
+    const store = this._store;
+    if (!store?.plan) return 'view';
+    const stored = readStoredMode(store.plan.id);
+    // Resolve once per plan, so adding the first block does not flip it.
+    this._mode = stored ?? (store.children(null).length === 0 ? 'edit' : 'view');
+    return this._mode;
+  }
+
+  private rememberMode(mode: Mode): void {
+    const plan = this._store?.plan?.id;
+    if (!plan) return;
+    try {
+      localStorage.setItem(`plan-block:mode:${plan}`, mode);
+    } catch {
+      // Storage unavailable (private mode, sandbox): the mode lasts this page only.
+    }
+  }
+
   connectedCallback(): void {
     window.addEventListener('plan-block-refresh', this.onRefresh);
+    document.addEventListener('click', this.onDocumentClick);
     if (this.hasAttribute('shadow') && !this.shadowRoot) {
       this.root = this.attachShadow({ mode: 'open' });
     }
@@ -115,6 +172,7 @@ export class PlanBlockElement extends HTMLElement {
   disconnectedCallback(): void {
     this.disconnectRealtime();
     window.removeEventListener('plan-block-refresh', this.onRefresh);
+    document.removeEventListener('click', this.onDocumentClick);
     this.drag.cancel();
     if (this.ownsStore) {
       this._store?.destroy();
@@ -132,6 +190,10 @@ export class PlanBlockElement extends HTMLElement {
       this._store = null;
       void this.boot();
     } else {
+      if (name === 'mode' && (newValue === 'view' || newValue === 'edit') && newValue !== this._mode) {
+        this._mode = newValue;
+        if (newValue === 'view') this.editingKey = null;
+      }
       this.cache.clear();
       this.scheduleRender();
     }
@@ -291,6 +353,7 @@ export class PlanBlockElement extends HTMLElement {
     store.removeEventListener('error', this.onError);
     store.removeEventListener('sync', this.onSync);
     this.cache.clear();
+    this._mode = null;
   }
 
   private adoptStyles(): void {
@@ -352,18 +415,12 @@ export class PlanBlockElement extends HTMLElement {
     }
 
     const list = this.ensure('list', () => h('div', { class: 'pb-list' }));
-    syncChildren(list, top.length ? top : [h('div', { class: 'pb-empty' }, labels.empty)]);
+    const mode = this.mode;
+    const emptyText = this.isReadOnly ? labels.emptyReadonly : mode === 'edit' ? labels.empty : labels.emptyView;
+    syncChildren(list, top.length ? top : [h('div', { class: 'pb-empty' }, emptyText)]);
 
-    const toolbar = this.isReadOnly
-      ? null
-      : this.ensure('toolbar', () =>
-          h(
-            'div',
-            { class: 'pb-toolbar' },
-            h('button', { type: 'button', class: 'pb-button', 'data-pb-action': 'add', 'data-pb-type': 'timeline', 'data-pb-parent': '' }, labels.addDay),
-            h('button', { type: 'button', class: 'pb-button', 'data-pb-action': 'add', 'data-pb-type': 'pool', 'data-pb-parent': '' }, labels.addPool),
-          ),
-        );
+    const toolbar = this.isReadOnly ? null : this.ensure(`toolbar-${mode}`, () => this.toolbar(mode));
+    this.container.dataset.pbMode = mode;
 
     const status = h(
       'div',
@@ -388,6 +445,11 @@ export class PlanBlockElement extends HTMLElement {
       : null;
 
     syncChildren(this.container, [toolbar, list, status, toast].filter((n): n is HTMLElement => n !== null));
+
+    if (this.focusModeToggle && toolbar) {
+      this.focusModeToggle = false;
+      toolbar.querySelector<HTMLElement>('[data-pb-action="mode"][aria-pressed="true"]')?.focus();
+    }
 
     if (this.focusEditor && this.editingKey) {
       this.focusEditor = false;
@@ -430,6 +492,21 @@ export class PlanBlockElement extends HTMLElement {
     match?.focus();
   }
 
+  /** Add buttons (edit mode) and the normal / edit switch. */
+  private toolbar(mode: Mode): HTMLElement {
+    const labels = this._labels;
+    const modeButton = (value: Mode, text: string) =>
+      h('button', { type: 'button', class: 'pb-button pb-mode__option', 'data-pb-action': 'mode', 'data-pb-value': value, 'aria-pressed': String(mode === value) }, text);
+
+    return h(
+      'div',
+      { class: 'pb-toolbar' },
+      mode === 'edit' ? h('button', { type: 'button', class: 'pb-button', 'data-pb-action': 'add', 'data-pb-type': 'timeline', 'data-pb-parent': '' }, labels.addDay) : null,
+      mode === 'edit' ? h('button', { type: 'button', class: 'pb-button', 'data-pb-action': 'add', 'data-pb-type': 'pool', 'data-pb-parent': '' }, labels.addPool) : null,
+      h('div', { class: 'pb-mode', role: 'group', 'aria-label': labels.mode }, modeButton('view', labels.viewMode), modeButton('edit', labels.editMode)),
+    );
+  }
+
   private persistent = new Map<string, HTMLElement>();
 
   private ensure(name: string, create: () => HTMLElement): HTMLElement {
@@ -460,17 +537,19 @@ export class PlanBlockElement extends HTMLElement {
       isLink ? target : null,
       editing,
       this.isReadOnly,
+      this.mode,
       // Controls whose availability depends on siblings or days.
       block.parent ? store.children(block.parent).length : 0,
       store.children(target.id).map((c) => c.type).join(),
-      store.children(null).filter((b) => b.type === 'timeline').map((d) => d.id + (d.payload.label ?? '')).join(),
+      // Day and ideas-list names (the link badge and "Add to day" use them).
+      store.children(null).map((d) => d.id + (d.payload.label ?? '')).join(),
     ]);
 
     let entry = this.cache.get(key);
 
     if (!entry || entry.signature !== signature) {
       const children = entry?.children ?? h('div', { class: 'pb-children', 'data-pb-children': '' });
-      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.isReadOnly, store, labels: this._labels, h, parts };
+      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.isReadOnly, mode: this.mode, canEdit: this.canEdit, store, labels: this._labels, h, parts };
       const el = rendererFor(target.type)(ctx);
 
       el.classList.add('pb-block');
@@ -509,7 +588,7 @@ export class PlanBlockElement extends HTMLElement {
         return el._store;
       },
       get readonly() {
-        return el.isReadOnly;
+        return !el.canEdit;
       },
       move: (id, parent, after) => el._store?.move(id, { parent, after }),
     };
@@ -523,6 +602,14 @@ export class PlanBlockElement extends HTMLElement {
     this.root.addEventListener('pointerdown', (event) => this.drag.onPointerDown(event as PointerEvent));
     this.root.addEventListener('keydown', (event) => {
       const key = (event as KeyboardEvent).key;
+      if (key === 'Escape') {
+        const open = (event.target as Element | null)?.closest<HTMLDetailsElement>('details[data-pb-menu][open]');
+        if (open) {
+          open.open = false;
+          open.querySelector<HTMLElement>('summary')?.focus();
+          return;
+        }
+      }
       if (key === 'Escape' && this.editingKey) {
         this.editingKey = null;
         this.scheduleRender();
@@ -532,7 +619,7 @@ export class PlanBlockElement extends HTMLElement {
       // Arrow keys on a focused drag handle move the block.
       const handle = (event.target as Element | null)?.closest<HTMLElement>('[data-pb-drag-handle]');
       const blockEl = handle?.closest<HTMLElement>('[data-pb-key]');
-      if ((key === 'ArrowUp' || key === 'ArrowDown') && blockEl?.dataset.pbId && !this.isReadOnly) {
+      if ((key === 'ArrowUp' || key === 'ArrowDown') && blockEl?.dataset.pbId && this.canEdit) {
         event.preventDefault();
         this.shift(blockEl.dataset.pbId, key === 'ArrowUp' ? -1 : 1);
       }
@@ -546,16 +633,32 @@ export class PlanBlockElement extends HTMLElement {
     return { action: el.dataset.pbAction!, el, id: blockEl?.dataset.pbId ?? null, key: blockEl?.dataset.pbKey ?? null };
   }
 
+  /** A click outside a menu closes it. */
+  private readonly onDocumentClick = (event: MouseEvent) => {
+    const path = event.composedPath();
+    for (const menu of this.root.querySelectorAll<HTMLDetailsElement>('details[data-pb-menu][open]')) {
+      if (!path.includes(menu)) menu.open = false;
+    }
+  };
+
   private onClick(event: MouseEvent): void {
     const hit = this.actionTarget(event);
     const store = this._store;
     if (!hit || !store) return;
     const { action, el, id, key } = hit;
 
+    // Picking an entry closes its menu.
+    const menu = el.closest<HTMLDetailsElement>('details[data-pb-menu]');
+    if (menu && action !== 'link') menu.open = false;
+
     // Checkbox actions are handled on "change".
     if (action === 'toggle-check' || action === 'check-all' || action === 'link') return;
 
     switch (action) {
+      case 'mode':
+        this.focusModeToggle = true;
+        this.mode = el.dataset.pbValue as Mode;
+        return;
       case 'add':
         return this.add(el.dataset.pbType!, el.dataset.pbParent || null, key);
       case 'edit':
@@ -691,6 +794,17 @@ export class PlanBlockElement extends HTMLElement {
 
   private emit(name: string, detail: unknown): void {
     this.dispatchEvent(new CustomEvent(`plan-block:${name}`, { detail, bubbles: true, composed: true }));
+  }
+}
+
+export type Mode = 'view' | 'edit';
+
+function readStoredMode(plan: string): Mode | null {
+  try {
+    const value = localStorage.getItem(`plan-block:mode:${plan}`);
+    return value === 'view' || value === 'edit' ? value : null;
+  } catch {
+    return null;
   }
 }
 

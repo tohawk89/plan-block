@@ -34,6 +34,8 @@ export interface PlanBlockProps {
   /** Custom transport for the created store. Read when the store is created (plan/endpoint change). */
   transport?: Transport;
   readonly?: boolean;
+  /** Starting mode: "view" (normal) or "edit". Defaults to what the user last picked for this plan. */
+  mode?: 'view' | 'edit';
   shadow?: boolean;
   noStyles?: boolean;
   labels?: Partial<Labels>;
@@ -117,6 +119,7 @@ export const PlanBlock = forwardRef<PlanBlockHandle, PlanBlockProps>(function Pl
     style: props.style,
     // Present-or-absent attributes; '' / undefined works in React 18 and 19.
     readonly: props.readonly ? '' : undefined,
+    mode: props.mode,
     shadow: props.shadow ? '' : undefined,
     'no-styles': props.noStyles ? '' : undefined,
   });
