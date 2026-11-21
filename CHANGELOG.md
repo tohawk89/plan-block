@@ -4,7 +4,7 @@ All notable changes to this package are listed here. Versions follow
 [Semantic Versioning](https://semver.org); while below 1.0, minor versions
 may contain breaking changes.
 
-## Unreleased
+## 0.2.0 - 2026-11-21
 
 ### Editor
 - **Normal and edit modes.** A Normal / Edit switch in the toolbar. Normal mode hides drag handles, add buttons and block actions, so the plan reads as a finished itinerary while checkboxes still work. A plan with blocks starts in normal mode and an empty plan in edit mode; the last choice is remembered per plan in the browser. New `mode` attribute and property, `plan-block:mode` event, `mode` prop on the Vue and React wrappers, and `ctx.mode` / `ctx.canEdit` for custom renderers.
