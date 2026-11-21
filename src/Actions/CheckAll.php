@@ -10,7 +10,8 @@ use Tohawk89\PlanBlock\Types\GroupRule;
 
 /**
  * Checks every item of a day. Only direct items (primaries), never their
- * backups; excluded items are skipped.
+ * backups; for a plan, its main (first) option unless one is already
+ * chosen. Excluded items are skipped.
  */
 class CheckAll extends Action
 {
@@ -27,10 +28,34 @@ class CheckAll extends Action
 
             $target = $tree->resolve($child);
 
-            if (! $target->isLink() && $tree->type($target)->checkable()) {
+            if ($target->isLink()) {
+                continue;
+            }
+
+            $type = $tree->type($target);
+
+            if ($type->checkable()) {
                 $this->checker->check($ctx, $target);
+            } elseif ($type->groupRule() === GroupRule::One && ! $tree->isDone($target)) {
+                $main = $this->mainChoice($tree, $target);
+
+                if ($main) {
+                    $this->checker->check($ctx, $main);
+                }
             }
         }
+    }
+
+    /** First non-excluded, checkable child: a plan's main option. */
+    protected function mainChoice(PlanTree $tree, Block $group): ?Block
+    {
+        foreach ($tree->children($group) as $child) {
+            if ($child->excluded_at === null && ! $child->isLink() && $tree->type($child)->checkable()) {
+                return $child;
+            }
+        }
+
+        return null;
     }
 
     /**

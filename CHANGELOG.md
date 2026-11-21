@@ -4,6 +4,15 @@ All notable changes to this package are listed here. Versions follow
 [Semantic Versioning](https://semver.org); while below 1.0, minor versions
 may contain breaking changes.
 
+## Unreleased
+
+### Plans with backups
+- **New `slot` block type ("Plan")** for things like Breakfast, Lunch or an activity: a category (breakfast, lunch, dinner, activity, stay, travel, other), optional title, time and notes. It sits in a day or ideas list and holds up to five places, ranked: the first is the main choice, the rest are backups.
+- **One choice per plan**: ticking an option unticks the others (new `one` group rule); the plan is done once an option is ticked and counts as one item for its day. A plan can't be ticked directly. `check_all` on a day ticks each plan's main option unless one is already chosen.
+- Editor: "+ Add" on a day lists the plan categories first; a new plan gets a suggested time and focuses a "Where?" box where Enter adds each place as the next option. Options show "★ Main" / "Backup n"; "Make main choice" promotes a backup. In normal mode a plan shows its main choice (or "✓ Went to …") with the backups folded behind a chip; its checkbox ticks the main choice.
+- Server-rendered copy shows plans with their ranks and the chosen option.
+- Places with nested `backup` blocks are unchanged.
+
 ## 0.3.0 - 2026-11-21
 
 ### Colours

@@ -1,4 +1,5 @@
 import '../src/web-component';
+import type { PlanStore } from '../src/client/store';
 import type { PlanBlockElement } from '../src/web-component/element';
 import { renderer } from '../src/web-component/renderers';
 import { FakeTransport, ids, makeStore, manifest, planResponse, settle } from './helpers';
@@ -195,7 +196,17 @@ describe('<plan-block>', () => {
     const footer = [...block(el, ids.day2).children].find((c) => c.classList.contains('pb-footer')) as HTMLElement;
 
     expect(q(footer, 'summary')!.textContent).toBe('+ Add');
-    expect([...footer.querySelectorAll('[data-pb-action="add"]')].map((b) => b.textContent)).toEqual(['Place', 'Note']);
+    expect([...footer.querySelectorAll('[data-pb-action="add"]')].map((b) => b.textContent)).toEqual([
+      'Breakfast',
+      'Lunch',
+      'Dinner',
+      'Activity',
+      'Stay',
+      'Travel',
+      'Other',
+      'Place',
+      'Note',
+    ]);
   });
 
   it('hides editing controls when readonly', async () => {
@@ -386,6 +397,131 @@ describe('<plan-block>', () => {
       // Day 1 is 1/1 done in the fixture.
       expect(block(el, ids.day1).hasAttribute('data-pb-complete')).toBe(true);
       expect(q(block(el, ids.day1), '.pb-meter__fill')!.getAttribute('style')).toContain('100%');
+    });
+  });
+
+  describe('plans with ranked options', () => {
+    /** Breakfast on Day 2 with Kedai A (main), B and C. */
+    async function breakfast(store: PlanStore) {
+      const slot = store.create('slot', { parent: ids.day2, after: store.children(ids.day2).at(-1)?.id ?? null, payload: { category: 'breakfast', time: '08:00' } });
+      const a = store.create('place', { parent: slot, after: null, payload: { name: 'Kedai A' } });
+      const b = store.create('place', { parent: slot, after: a, payload: { name: 'Kedai B' } });
+      const c = store.create('place', { parent: slot, after: b, payload: { name: 'Kedai C' } });
+      await settle();
+      return { slot, a, b, c };
+    }
+
+    const optionNames = (el: Element, slot: string) => [...block(el, slot).querySelectorAll('.pb-children [data-pb-type="place"] .pb-title')].map((t) => t.textContent);
+    const ranks = (el: Element, slot: string) => [...block(el, slot).querySelectorAll('.pb-children .pb-badge--main, .pb-children .pb-badge--backup')].map((b) => b.textContent);
+
+    it('adds a plan from the day menu and goes straight to typing places', async () => {
+      const { el, store } = await mount();
+
+      q(block(el, ids.day2), '[data-pb-action="add"][data-pb-type="slot"][data-pb-category="breakfast"]')!.click();
+      await settle();
+
+      const slot = store.children(ids.day2).at(-1)!;
+      expect(slot).toMatchObject({ type: 'slot', payload: { category: 'breakfast', time: '08:00' } });
+      const box = q(block(el, slot.id), '[data-pb-action="quick-add"]') as HTMLInputElement;
+      expect(document.activeElement).toBe(box);
+      expect(box.placeholder).toContain('Where?');
+
+      for (const name of ['Kedai A', 'Kedai B', '  ']) {
+        const input = q(block(el, slot.id), '[data-pb-action="quick-add"]') as HTMLInputElement;
+        input.value = name;
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await settle();
+      }
+
+      expect(store.children(slot.id).map((b) => b.payload.name)).toEqual(['Kedai A', 'Kedai B']);
+      expect(document.activeElement).toBe(q(block(el, slot.id), '[data-pb-action="quick-add"]'));
+      expect(ranks(el, slot.id)).toEqual(['★ Main', 'Backup 1']);
+    });
+
+    it('makes a backup the main choice', async () => {
+      const { el, store } = await mount();
+      const { slot, c } = await breakfast(store);
+
+      q(block(el, c), '[data-pb-action="make-main"]')!.click();
+      await settle();
+
+      expect(optionNames(el, slot)).toEqual(['Kedai C', 'Kedai A', 'Kedai B']);
+      expect(ranks(el, slot)).toEqual(['★ Main', 'Backup 1', 'Backup 2']);
+      expect(q(block(el, c), '[data-pb-action="make-main"]')).toBeNull();
+    });
+
+    it('keeps one choice: ticking an option unticks the others', async () => {
+      const { el, store } = await mount();
+      const { a, b } = await breakfast(store);
+      const tick = (id: string) => {
+        const box = block(el, id).querySelector<HTMLInputElement>('[data-pb-action="toggle-check"]')!;
+        box.checked = true;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
+      tick(a);
+      tick(b);
+      await settle();
+
+      expect(store.get(a)?.checked).toBe(false);
+      expect(store.get(b)?.checked).toBe(true);
+    });
+
+    it('in normal mode shows the main choice, folds the backups, and says which was used', async () => {
+      const { el, store } = await mount();
+      const { slot, b } = await breakfast(store);
+      el.mode = 'view';
+      await settle();
+
+      const children = [...block(el, slot).children].find((c) => c.classList.contains('pb-children')) as HTMLElement;
+      expect(children.hidden).toBe(true);
+      expect(q(block(el, slot), '.pb-slot__summary')!.textContent).toBe('Kedai A');
+      expect(q(block(el, slot), '[data-pb-action="quick-add"]')).toBeNull();
+      const chip = q(block(el, slot), '[data-pb-action="toggle-expand"]')!;
+      expect(chip.textContent).toContain('2 backups');
+
+      chip.click();
+      await settle();
+      expect(children.hidden).toBe(false);
+      expect(q(block(el, slot), '[data-pb-action="toggle-expand"]')!.getAttribute('aria-expanded')).toBe('true');
+
+      store.check(b);
+      await settle();
+      expect(q(block(el, slot), '.pb-slot__summary')!.textContent).toBe('✓ Went to Kedai B Backup 1');
+    });
+
+    it('ticks the main option from the plan checkbox, and clears the choice when unticked', async () => {
+      const { el, store } = await mount();
+      const { slot, a, c } = await breakfast(store);
+      const box = () => block(el, slot).querySelector<HTMLInputElement>('[data-pb-action="toggle-slot"]')!;
+
+      box().checked = true;
+      box().dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(store.get(a)?.checked).toBe(true);
+
+      store.check(c);
+      await settle();
+      expect(box().checked).toBe(true);
+
+      box().checked = false;
+      box().dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect([a, c].map((id) => store.get(id)?.checked)).toEqual([false, false]);
+    });
+
+    it('check all on a day ticks each plan\'s main option', async () => {
+      const { el, store, transport } = await mount();
+      const { a, b } = await breakfast(store);
+
+      const dayBox = block(el, ids.day2).querySelector<HTMLInputElement>('[data-pb-action="check-all"]')!;
+      dayBox.checked = true;
+      dayBox.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+
+      expect(store.get(a)?.checked).toBe(true);
+      expect(store.get(b)?.checked).toBe(false);
+      expect(transport.sent.at(-1)!.commands[0]).toMatchObject({ type: 'check_all', block: ids.day2 });
     });
   });
 });

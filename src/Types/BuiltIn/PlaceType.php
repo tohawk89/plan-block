@@ -33,7 +33,7 @@ class PlaceType extends BlockType
 
     public function parents(): ?array
     {
-        return ['timeline', 'pool'];
+        return ['timeline', 'pool', 'slot'];
     }
 
     public function children(): Children

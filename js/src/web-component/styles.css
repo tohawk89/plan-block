@@ -716,6 +716,185 @@
     padding: 0.2rem 0.1rem;
   }
 
+  /* ---- Plans (Breakfast, Lunch…) and their options ---------------------- */
+
+  [data-pb-category='breakfast'] {
+    --pb-cat: var(--pb-amber);
+    --pb-cat-soft: var(--pb-amber-soft);
+    --pb-cat-strong: var(--pb-amber-strong);
+    --pb-cat-icon: '☕';
+  }
+
+  [data-pb-category='lunch'] {
+    --pb-cat: var(--pb-coral);
+    --pb-cat-soft: var(--pb-coral-soft);
+    --pb-cat-strong: var(--pb-coral-strong);
+    --pb-cat-icon: '🍜';
+  }
+
+  [data-pb-category='dinner'] {
+    --pb-cat: var(--pb-purple);
+    --pb-cat-soft: var(--pb-purple-soft);
+    --pb-cat-strong: var(--pb-purple-strong);
+    --pb-cat-icon: '🍽️';
+  }
+
+  [data-pb-category='activity'] {
+    --pb-cat: var(--pb-teal);
+    --pb-cat-soft: var(--pb-teal-soft);
+    --pb-cat-strong: var(--pb-teal-strong);
+    --pb-cat-icon: '🎡';
+  }
+
+  [data-pb-category='stay'] {
+    --pb-cat: var(--pb-blue);
+    --pb-cat-soft: var(--pb-blue-soft);
+    --pb-cat-strong: var(--pb-blue-strong);
+    --pb-cat-icon: '🏨';
+  }
+
+  [data-pb-category='travel'] {
+    --pb-cat: var(--pb-gray);
+    --pb-cat-soft: var(--pb-gray-soft);
+    --pb-cat-strong: var(--pb-gray-strong);
+    --pb-cat-icon: '🚗';
+  }
+
+  [data-pb-category='other'] {
+    --pb-cat: var(--pb-pink);
+    --pb-cat-soft: var(--pb-pink-soft);
+    --pb-cat-strong: var(--pb-pink-strong);
+    --pb-cat-icon: '📌';
+  }
+
+  .pb-slot__icon {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: calc(var(--pb-radius) - 2px);
+    background: var(--pb-cat-soft, var(--pb-surface));
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .pb-slot__icon::before {
+    content: var(--pb-cat-icon, '•');
+  }
+
+  .pb-slot > .pb-item__row {
+    align-items: center;
+  }
+
+  .pb-slot__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+  }
+
+  .pb-slot__heading .pb-title {
+    color: var(--pb-cat-strong, var(--pb-text));
+  }
+
+  .pb-slot__summary {
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+  }
+
+  .pb-slot__summary--done {
+    color: var(--pb-done);
+  }
+
+  .pb-chip {
+    appearance: none;
+    margin-top: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--pb-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--pb-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .pb-chip:hover {
+    color: var(--pb-text);
+    border-color: var(--pb-cat, var(--pb-accent));
+  }
+
+  .pb-chip:focus-visible {
+    outline: 2px solid var(--pb-accent);
+    outline-offset: 1px;
+  }
+
+  .pb-children[hidden] {
+    display: none;
+  }
+
+  /* Options line up under the plan's title, on a line in its colour. */
+  .pb-slot > .pb-children {
+    margin: 0.25rem 0 0 3.25rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid color-mix(in srgb, var(--pb-cat, var(--pb-border)) 45%, transparent);
+  }
+
+  .pb-group[data-pb-color] .pb-slot > .pb-children {
+    border-left-color: color-mix(in srgb, var(--pb-cat, var(--pb-border)) 45%, transparent);
+  }
+
+  .pb-slot > .pb-children > .pb-item {
+    padding: 0.3rem 0;
+  }
+
+  .pb-quick-add {
+    display: block;
+    width: calc(100% - 3.25rem);
+    margin: 0.35rem 0 0 3.25rem;
+    font-size: 0.875rem;
+  }
+
+  .pb-badge--main {
+    background: var(--pb-cat-soft, var(--pb-surface));
+    color: var(--pb-cat-strong, var(--pb-text));
+    border-color: transparent;
+  }
+
+  .pb-menu__item--plan {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pb-menu__item--plan .pb-slot__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.85rem;
+  }
+
+  .pb-menu__divider {
+    height: 1px;
+    margin: 0.25rem 0.25rem;
+    background: var(--pb-border);
+  }
+
+  .pb-menu--add > .pb-menu__list {
+    min-width: 12rem;
+  }
+
+  @media (max-width: 480px) {
+    .pb-slot > .pb-children,
+    .pb-quick-add {
+      margin-left: 1.5rem;
+    }
+
+    .pb-quick-add {
+      width: calc(100% - 1.5rem);
+    }
+  }
+
   /* ---- Mode switch ------------------------------------------------------ */
 
   .pb-toolbar .pb-mode {

@@ -13,4 +13,7 @@ return [
     'linked' => 'linked',
     'done_via_backup' => 'done via backup',
     'map' => 'Map',
+    'main' => 'Main',
+    'backup' => 'Backup :number',
+    'went_to' => 'Went to :name',
 ];

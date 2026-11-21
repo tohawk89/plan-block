@@ -58,6 +58,10 @@ export class PlanBlockElement extends HTMLElement {
   /** Chosen mode; null until resolved for the current plan. */
   private _mode: Mode | null = null;
   private focusModeToggle = false;
+  /** Plans whose options are unfolded in normal mode (by block key). */
+  private expanded = new Set<string>();
+  /** A plan just created: focus its "add a place" box after rendering. */
+  private focusQuickAdd: string | null = null;
 
   get store(): PlanStore | null {
     return this._store;
@@ -453,6 +457,12 @@ export class PlanBlockElement extends HTMLElement {
       toolbar.querySelector<HTMLElement>('[data-pb-action="mode"][aria-pressed="true"]')?.focus();
     }
 
+    if (this.focusQuickAdd) {
+      // Gone when the plan is full: then nothing takes focus.
+      this.root.querySelector<HTMLElement>(`[data-pb-key="${cssEscape(this.focusQuickAdd)}"] [data-pb-action="quick-add"]`)?.focus();
+      this.focusQuickAdd = null;
+    }
+
     if (this.focusEditor && this.editingKey) {
       this.focusEditor = false;
       const field = this.root.querySelector<HTMLElement>(`[data-pb-key="${cssEscape(this.editingKey)}"] [data-pb-form] .pb-input`);
@@ -532,14 +542,22 @@ export class PlanBlockElement extends HTMLElement {
     const target = (isLink ? store.resolve(block.id) : block) ?? block;
     const type = store.type(target.type);
     const editing = this.editingKey === key;
+    const expanded = this.expanded.has(key);
+    const parentRule = block.parent ? store.type(store.get(block.parent)?.type ?? '')?.rule : undefined;
+    const ownRule = type?.rule;
     seen.add(key);
 
     const signature = JSON.stringify([
       block,
       isLink ? target : null,
       editing,
+      expanded,
       this.isReadOnly,
       this.mode,
+      // A plan's option shows its rank, which moves with its siblings.
+      parentRule === 'one' ? store.children(block.parent).map((c) => c.id).join() : null,
+      // A plan shows its main and chosen option.
+      ownRule === 'one' ? store.children(target.id).map((c) => [c.id, c.checked, c.excluded, c.payload.name]) : null,
       // Controls whose availability depends on siblings or days.
       block.parent ? store.children(block.parent).length : 0,
       store.children(target.id).map((c) => c.type).join(),
@@ -551,7 +569,7 @@ export class PlanBlockElement extends HTMLElement {
 
     if (!entry || entry.signature !== signature) {
       const children = entry?.children ?? h('div', { class: 'pb-children', 'data-pb-children': '' });
-      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.isReadOnly, mode: this.mode, canEdit: this.canEdit, store, labels: this._labels, h, parts };
+      const ctx: RenderContext = { block, target, type, isLink, children, editing, readonly: this.isReadOnly, mode: this.mode, canEdit: this.canEdit, expanded, store, labels: this._labels, h, parts };
       const el = rendererFor(target.type)(ctx);
 
       el.classList.add('pb-block');
@@ -616,6 +634,14 @@ export class PlanBlockElement extends HTMLElement {
           return;
         }
       }
+      const quickAdd = (event.target as Element | null)?.closest<HTMLInputElement>('input[data-pb-action="quick-add"]');
+      if (quickAdd && (key === 'Enter' || key === 'Escape')) {
+        event.preventDefault();
+        if (key === 'Escape') quickAdd.blur();
+        else this.quickAdd(quickAdd);
+        return;
+      }
+
       if (key === 'Escape' && this.editingKey) {
         this.editingKey = null;
         this.scheduleRender();
@@ -657,8 +683,8 @@ export class PlanBlockElement extends HTMLElement {
     const menu = el.closest<HTMLDetailsElement>('details[data-pb-menu]');
     if (menu && action !== 'link') menu.open = false;
 
-    // Checkbox actions are handled on "change".
-    if (action === 'toggle-check' || action === 'check-all' || action === 'link') return;
+    // Checkbox actions are handled on "change", typing in the add box on keydown.
+    if (action === 'toggle-check' || action === 'toggle-slot' || action === 'check-all' || action === 'link' || action === 'quick-add') return;
 
     switch (action) {
       case 'mode':
@@ -666,7 +692,12 @@ export class PlanBlockElement extends HTMLElement {
         this.mode = el.dataset.pbValue as Mode;
         return;
       case 'add':
-        return this.add(el.dataset.pbType!, el.dataset.pbParent || null, key);
+        return this.add(el.dataset.pbType!, el.dataset.pbParent || null, key, parsePayload(el.dataset.pbPayload), el.dataset.pbFocus === 'quick-add');
+      case 'toggle-expand':
+        if (!key) return;
+        if (this.expanded.has(key)) this.expanded.delete(key);
+        else this.expanded.add(key);
+        return this.scheduleRender();
       case 'edit':
         this.editingKey = key;
         this.focusEditor = true;
@@ -697,6 +728,9 @@ export class PlanBlockElement extends HTMLElement {
         if (target && target.payload.color !== el.dataset.pbColor) store.update(target.id, { color: el.dataset.pbColor ?? null });
         return;
       }
+      case 'make-main':
+        store.move(id, { after: null });
+        return;
       case 'move-up':
       case 'move-down':
         return this.shift(id, action === 'move-up' ? -1 : 1);
@@ -714,6 +748,15 @@ export class PlanBlockElement extends HTMLElement {
 
     if (hit.action === 'toggle-check') {
       store.setChecked(hit.id, input.checked);
+    } else if (hit.action === 'toggle-slot') {
+      // Ticking a plan picks its main option; unticking clears the choice.
+      const options = store.children(store.resolve(hit.id)?.id ?? hit.id).filter((b) => b.type !== 'link' && store.type(b.type)?.checkable);
+      if (input.checked) {
+        const main = options.find((o) => !o.excluded);
+        if (main && !options.some((o) => o.checked)) store.check(main.id);
+      } else {
+        for (const option of options) if (option.checked) store.uncheck(option.id);
+      }
     } else if (hit.action === 'check-all') {
       if (input.checked) store.checkAll(hit.id);
       else store.uncheckAll(hit.id);
@@ -748,21 +791,46 @@ export class PlanBlockElement extends HTMLElement {
     this.scheduleRender();
   }
 
-  private add(typeKey: string, parent: string | null, parentKey: string | null): void {
+  private add(typeKey: string, parent: string | null, parentKey: string | null, preset: Record<string, unknown> = {}, focusQuickAdd = false): void {
     const store = this._store!;
     const type = store.type(typeKey);
     const titleField = type?.fields.find((f) => f.type === 'text' || f.type === 'textarea');
-    const payload = titleField?.required ? { [titleField.name]: this._labels.newItem(type?.label ?? typeKey) } : {};
+    const payload = { ...(titleField?.required ? { [titleField.name]: this._labels.newItem(type?.label ?? typeKey) } : {}), ...preset };
     const after = store.children(parent).at(-1)?.id ?? null;
     const id = store.create(typeKey, { parent, after, payload });
 
-    if (titleField) {
-      // Same scope as the parent's children so the right copy opens.
-      const parentEl = parentKey ? this.cache.get(parentKey) : undefined;
-      const scope = parentKey && parent && parentEl?.el.dataset.pbLink !== undefined ? `${parentKey}>` : parentKey && parent ? parentKey.slice(0, -parent.length) : '';
+    // Same scope as the parent's children so the right copy opens.
+    const parentEl = parentKey ? this.cache.get(parentKey) : undefined;
+    const scope = parentKey && parent && parentEl?.el.dataset.pbLink !== undefined ? `${parentKey}>` : parentKey && parent ? parentKey.slice(0, -parent.length) : '';
+
+    if (focusQuickAdd) {
+      // A new plan: go straight to typing its first place.
+      this.focusQuickAdd = scope + id;
+    } else if (titleField) {
       this.editingKey = scope + id;
       this.focusEditor = true;
     }
+  }
+
+  /** Enter in a plan's "add a place" box: add it as the next option. */
+  private quickAdd(input: HTMLInputElement): void {
+    const store = this._store;
+    const blockEl = input.closest<HTMLElement>('[data-pb-key]');
+    const plan = blockEl?.dataset.pbId ? store?.resolve(blockEl.dataset.pbId) : undefined;
+    if (!store || !plan) return;
+
+    const name = input.value.trim();
+    if (!name) {
+      input.setCustomValidity(this._labels.quickAddEmpty);
+      input.reportValidity();
+      input.addEventListener('input', () => input.setCustomValidity(''), { once: true });
+      return;
+    }
+
+    input.value = '';
+    store.create('place', { parent: plan.id, after: store.children(plan.id).at(-1)?.id ?? null, payload: { name } });
+    // The plan re-renders with a new box; keep typing there.
+    this.focusQuickAdd = blockEl!.dataset.pbKey!;
   }
 
   private shift(id: string, direction: -1 | 1): void {
@@ -809,6 +877,16 @@ export class PlanBlockElement extends HTMLElement {
 }
 
 export type Mode = 'view' | 'edit';
+
+function parsePayload(json: string | undefined): Record<string, unknown> {
+  if (!json) return {};
+  try {
+    const value = JSON.parse(json);
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
 
 function readStoredMode(plan: string): Mode | null {
   try {

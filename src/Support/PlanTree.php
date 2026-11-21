@@ -321,6 +321,7 @@ final class PlanTree
             })(),
             GroupRule::Count => false,
             GroupRule::Any => $block->checked_at !== null || $this->anyChildDone($block, $visiting),
+            GroupRule::One => $this->anyChildDone($block, $visiting),
             GroupRule::None => $type->checkable() && $block->checked_at !== null,
         };
     }
