@@ -3,10 +3,13 @@ import type { PlanBlockElement } from '../src/web-component/element';
 import { renderer } from '../src/web-component/renderers';
 import { FakeTransport, ids, makeStore, manifest, planResponse, settle } from './helpers';
 
-async function mount(options: { readonly?: boolean; transport?: FakeTransport } = {}) {
+async function mount(options: { readonly?: boolean; transport?: FakeTransport; mode?: 'view' | 'edit' | null } = {}) {
   const { store, transport } = await makeStore(options.transport ?? new FakeTransport(), null);
   const el = document.createElement('plan-block') as PlanBlockElement;
   if (options.readonly) el.setAttribute('readonly', '');
+  // Most tests exercise editing; null leaves the mode to the element.
+  const mode = options.mode === undefined ? 'edit' : options.mode;
+  if (mode) el.setAttribute('mode', mode);
   el.store = store;
   document.body.append(el);
   await settle();
@@ -18,6 +21,7 @@ const block = (el: Element, id: string, scope = '') => q(el, `[data-pb-key="${sc
 
 afterEach(() => {
   document.body.innerHTML = '';
+  localStorage.clear();
 });
 
 describe('<plan-block>', () => {
@@ -41,7 +45,8 @@ describe('<plan-block>', () => {
     expect(link.dataset.pbType).toBe('place');
     expect(link.hasAttribute('data-pb-link')).toBe(true);
     expect(link.hasAttribute('data-pb-checked')).toBe(true);
-    expect(link.textContent).toContain('linked');
+    // The original lives in the ideas list.
+    expect(link.textContent).toContain('Also in Ideas');
   });
 
   it('checks a place immediately and sends a check command', async () => {
@@ -160,12 +165,47 @@ describe('<plan-block>', () => {
     expect(added.source).toBe(ids.museum);
   });
 
+  it('closes the menu after picking an entry', async () => {
+    const { el, store } = await mount();
+    const menu = q(block(el, ids.lunch), 'details[data-pb-menu]') as HTMLDetailsElement;
+    menu.open = true;
+
+    // Lunch starts skipped.
+    expect(q(menu, '[data-pb-action="include"]')!.textContent).toBe('Undo skip');
+    q(menu, '[data-pb-action="include"]')!.click();
+    await settle();
+
+    expect(menu.open).toBe(false);
+    expect(store.get(ids.lunch)?.excluded).toBe(false);
+    expect(q(block(el, ids.lunch), '[data-pb-action="exclude"]')!.textContent).toBe('Skip');
+  });
+
+  it('closes an open menu on a click outside it', async () => {
+    const { el } = await mount();
+    const menu = q(block(el, ids.lunch), 'details[data-pb-menu]') as HTMLDetailsElement;
+    menu.open = true;
+
+    document.body.click();
+
+    expect(menu.open).toBe(false);
+  });
+
+  it('groups several add choices under one "+ Add" menu', async () => {
+    const { el } = await mount();
+    const footer = [...block(el, ids.day2).children].find((c) => c.classList.contains('pb-footer')) as HTMLElement;
+
+    expect(q(footer, 'summary')!.textContent).toBe('+ Add');
+    expect([...footer.querySelectorAll('[data-pb-action="add"]')].map((b) => b.textContent)).toEqual(['Place', 'Note']);
+  });
+
   it('hides editing controls when readonly', async () => {
     const { el } = await mount({ readonly: true });
 
     expect(q(el, '[data-pb-action="delete"]')).toBeNull();
     expect(q(el, '[data-pb-action="add"]')).toBeNull();
     expect(block(el, ids.breakfast).querySelector<HTMLInputElement>('[data-pb-action="toggle-check"]')!.disabled).toBe(true);
+    expect(q(el, '[data-pb-action="mode"]')).toBeNull();
+    expect(el.mode).toBe('view');
   });
 
   it('uses custom renderers, still wired to package actions', async () => {
@@ -224,5 +264,72 @@ describe('<plan-block>', () => {
     await settle();
 
     expect(q(el, '.pb-toast[data-kind="error"]')?.textContent).toContain('Gone.');
+  });
+
+  describe('normal and edit modes', () => {
+    it('starts a plan with blocks in normal mode: no editing controls, ticking still works', async () => {
+      const { el, transport } = await mount({ mode: null });
+
+      expect(el.mode).toBe('view');
+      expect(q(el, '[data-pb-action="mode"][data-pb-value="view"]')!.getAttribute('aria-pressed')).toBe('true');
+      expect(q(el, '[data-pb-drag-handle]')).toBeNull();
+      expect(q(el, '[data-pb-action="add"]')).toBeNull();
+      expect(q(el, '[data-pb-menu]')).toBeNull();
+      expect(q(block(el, ids.breakfast), '.pb-title')!.tagName).toBe('SPAN');
+
+      const box = block(el, ids.breakfast).querySelector<HTMLInputElement>('[data-pb-action="toggle-check"]')!;
+      expect(box.disabled).toBe(false);
+      box.checked = true;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(transport.sent[0]!.commands[0]).toMatchObject({ type: 'check', block: ids.breakfast });
+    });
+
+    it('switches to edit mode, emits plan-block:mode, and remembers it for the plan', async () => {
+      const { el, store } = await mount({ mode: null });
+      const events: string[] = [];
+      el.addEventListener('plan-block:mode', (e) => events.push((e as CustomEvent).detail.mode));
+
+      q(el, '[data-pb-action="mode"][data-pb-value="edit"]')!.click();
+      await settle();
+
+      expect(el.mode).toBe('edit');
+      expect(events).toEqual(['edit']);
+      expect(q(el, '[data-pb-drag-handle]')).not.toBeNull();
+      expect(q(el, '.pb-toolbar [data-pb-type="timeline"]')).not.toBeNull();
+      expect(q(el, '[data-pb-action="mode"][data-pb-value="edit"]')!.getAttribute('aria-pressed')).toBe('true');
+      expect(localStorage.getItem(`plan-block:mode:${store.plan!.id}`)).toBe('edit');
+
+      // Another editor for the same plan starts where the user left off.
+      const { el: second } = await mount({ mode: null });
+      expect(second.mode).toBe('edit');
+    });
+
+    it('closes an open edit form when switching back to normal mode', async () => {
+      const { el } = await mount();
+      q(block(el, ids.breakfast), '.pb-title')!.click();
+      await settle();
+      expect(q(block(el, ids.breakfast), '[data-pb-form]')).not.toBeNull();
+
+      el.setAttribute('mode', 'view');
+      await settle();
+
+      expect(q(block(el, ids.breakfast), '[data-pb-form]')).toBeNull();
+      expect(q(el, '[data-pb-drag-handle]')).toBeNull();
+    });
+
+    it('starts an empty plan in edit mode and stays there after the first block', async () => {
+      const empty = { ...planResponse(), blocks: [] };
+      const { el, store } = await mount({ mode: null, transport: new FakeTransport(empty) });
+
+      expect(el.mode).toBe('edit');
+      expect(q(el, '.pb-empty')!.textContent).toContain('Add a day');
+
+      q(el, '.pb-toolbar [data-pb-type="timeline"]')!.click();
+      await settle();
+
+      expect(store.children(null)).toHaveLength(1);
+      expect(el.mode).toBe('edit');
+    });
   });
 });

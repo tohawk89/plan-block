@@ -5,7 +5,7 @@
 
 return [
     'day' => 'Day :number',
-    'pool' => 'Pool',
+    'pool' => 'Ideas',
     'check_all' => 'Check all items',
     'mark_done' => 'Mark ":name" done',
     'progress' => ':done/:total',

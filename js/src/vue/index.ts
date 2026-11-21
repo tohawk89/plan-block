@@ -45,6 +45,8 @@ export const PlanBlock = defineComponent({
     /** Custom transport, read when the store is created (plan/endpoint change). */
     transport: { type: Object as PropType<Transport>, default: undefined },
     readonly: { type: Boolean, default: false },
+    /** Starting mode: "view" (normal) or "edit". Defaults to what the user last picked for this plan. */
+    mode: { type: String as PropType<'view' | 'edit'>, default: undefined },
     shadow: { type: Boolean, default: false },
     noStyles: { type: Boolean, default: false },
     labels: { type: Object as PropType<Partial<Labels>>, default: undefined },
@@ -111,6 +113,7 @@ export const PlanBlock = defineComponent({
       h('plan-block', {
         ref: element,
         readonly: props.readonly ? '' : undefined,
+        mode: props.mode,
         shadow: props.shadow ? '' : undefined,
         'no-styles': props.noStyles ? '' : undefined,
       });

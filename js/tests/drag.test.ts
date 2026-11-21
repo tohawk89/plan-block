@@ -10,6 +10,7 @@ import { FakeTransport, ids, makeStore, settle } from './helpers';
 async function mount() {
   const { store, transport } = await makeStore(new FakeTransport(), null);
   const el = document.createElement('plan-block') as PlanBlockElement;
+  el.setAttribute('mode', 'edit');
   el.store = store;
   document.body.append(el);
   await settle();

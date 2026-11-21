@@ -16,7 +16,12 @@ export interface RenderContext {
   children: HTMLElement;
   /** True while this block's edit form is open. */
   editing: boolean;
+  /** The plan cannot be changed at all (the readonly attribute). */
   readonly: boolean;
+  /** "view" (normal: read and tick off) or "edit" (build and rearrange). Always "view" when readonly. */
+  mode: 'view' | 'edit';
+  /** Show editing controls: not readonly and in edit mode. */
+  canEdit: boolean;
   store: PlanStore;
   labels: Labels;
   h: typeof h;
@@ -56,7 +61,7 @@ function titleOf(ctx: RenderContext): string {
 
 function title(ctx: RenderContext, fallback?: string): HTMLElement {
   const text = fallback ?? titleOf(ctx);
-  return ctx.readonly
+  return !ctx.canEdit
     ? h('span', { class: 'pb-title' }, text)
     : h('button', { type: 'button', class: 'pb-title', 'data-pb-action': 'edit', title: ctx.labels.edit }, text);
 }
@@ -69,11 +74,35 @@ function iconButton(action: string, label: string, glyph: string, extra: Record<
   );
 }
 
+/** One entry in a block's "⋯" menu. */
+function menuItem(action: string, label: string, danger = false): HTMLElement {
+  return h('button', { type: 'button', class: `pb-menu__item${danger ? ' pb-menu__item--danger' : ''}`, 'data-pb-action': action }, label);
+}
+
+/**
+ * A small dropdown: a summary button and a list that opens below it.
+ * Picking an entry closes it (the component handles that).
+ */
+function menu(summary: HTMLElement | string, label: string | null, items: (HTMLElement | null)[], extraClass = ''): HTMLElement {
+  return h(
+    'details',
+    { class: `pb-menu${extraClass ? ` ${extraClass}` : ''}`, 'data-pb-menu': '' },
+    h('summary', { class: 'pb-button pb-menu__summary', 'aria-label': label ?? undefined, title: label ?? undefined }, summary),
+    h('div', { class: 'pb-menu__list' }, ...items),
+  );
+}
+
+/** The "⋯" menu with edit, move, skip and delete. Edit mode only. */
+function blockMenu(ctx: RenderContext, items: (HTMLElement | null)[]): HTMLElement {
+  return menu(h('span', { 'aria-hidden': 'true' }, '⋯'), ctx.labels.moreActions, items, 'pb-menu--actions');
+}
+
 function itemActions(ctx: RenderContext, options: { linkable?: boolean } = {}): HTMLElement | null {
-  if (ctx.readonly) return null;
+  if (!ctx.canEdit) return null;
   const { labels, block, store } = ctx;
   const days = store.children(null).filter((b) => b.type === 'timeline');
   const parent = block.parent ? store.get(block.parent) : undefined;
+  const editable = (ctx.type?.fields.length ?? 0) > 0;
 
   return h(
     'div',
@@ -86,21 +115,52 @@ function itemActions(ctx: RenderContext, options: { linkable?: boolean } = {}): 
           ...days.map((day) => h('option', { value: day.id }, dayTitle(store, day, labels))),
         )
       : null,
-    iconButton('move-up', labels.moveUp, '↑'),
-    iconButton('move-down', labels.moveDown, '↓'),
-    !ctx.type?.root ? iconButton(block.excluded ? 'include' : 'exclude', block.excluded ? labels.include : labels.exclude, block.excluded ? '↺' : '⊘') : null,
-    iconButton('delete', labels.delete, '✕'),
+    blockMenu(ctx, [
+      editable ? menuItem('edit', labels.edit) : null,
+      menuItem('move-up', labels.moveUp),
+      menuItem('move-down', labels.moveDown),
+      !ctx.type?.root ? menuItem(block.excluded ? 'include' : 'exclude', block.excluded ? labels.include : labels.exclude) : null,
+      menuItem('delete', labels.delete, true),
+    ]),
   );
 }
 
+/** Header actions of a day or ideas list. */
+function groupActions(ctx: RenderContext): HTMLElement | null {
+  if (!ctx.canEdit) return null;
+  const { labels } = ctx;
+  return h(
+    'div',
+    { class: 'pb-actions' },
+    blockMenu(ctx, [menuItem('edit', labels.edit), menuItem('move-up', labels.moveUp), menuItem('move-down', labels.moveDown), menuItem('delete', labels.delete, true)]),
+  );
+}
+
+/**
+ * Add controls: one button when a single type fits, otherwise a "+ Add"
+ * menu listing the types. Edit mode only.
+ */
 function addButtons(ctx: RenderContext, types: string[]): HTMLElement | null {
-  if (ctx.readonly) return null;
-  const buttons = types
-    .filter((key) => canAdd(ctx, key))
-    .map((key) =>
-      h('button', { type: 'button', class: 'pb-button', 'data-pb-action': 'add', 'data-pb-type': key, 'data-pb-parent': ctx.target.id }, ctx.labels.add(ctx.store.type(key)?.label ?? key)),
-    );
-  return buttons.length ? h('div', { class: 'pb-footer' }, ...buttons) : null;
+  if (!ctx.canEdit) return null;
+  const allowed = types.filter((key) => canAdd(ctx, key));
+  if (!allowed.length) return null;
+  const label = (key: string) => ctx.store.type(key)?.label ?? key;
+  const attrs = (key: string) => ({ type: 'button', 'data-pb-action': 'add', 'data-pb-type': key, 'data-pb-parent': ctx.target.id });
+
+  if (allowed.length === 1) {
+    return h('div', { class: 'pb-footer' }, h('button', { ...attrs(allowed[0]!), class: 'pb-button' }, ctx.labels.add(label(allowed[0]!))));
+  }
+
+  return h(
+    'div',
+    { class: 'pb-footer' },
+    menu(
+      ctx.labels.addMenu,
+      null,
+      allowed.map((key) => h('button', { ...attrs(key), class: 'pb-menu__item' }, label(key))),
+      'pb-menu--add',
+    ),
+  );
 }
 
 function canAdd(ctx: RenderContext, key: string): boolean {
@@ -109,7 +169,7 @@ function canAdd(ctx: RenderContext, key: string): boolean {
 
 /** Drag handle; also moves the block with the arrow keys when focused. */
 function dragHandle(ctx: RenderContext): HTMLElement | null {
-  if (ctx.readonly || ctx.editing) return null;
+  if (!ctx.canEdit || ctx.editing) return null;
   return h(
     'button',
     { type: 'button', class: 'pb-drag-handle', 'data-pb-drag-handle': '', 'aria-label': ctx.labels.dragHandle, title: ctx.labels.dragHandle },
@@ -129,8 +189,26 @@ function checkbox(ctx: RenderContext): HTMLElement | null {
   });
 }
 
+/** On a linked copy: where the original lives ("Also in Day 1"). */
 function linkBadge(ctx: RenderContext): HTMLElement | null {
-  return ctx.isLink ? h('span', { class: 'pb-badge', title: ctx.labels.linked }, `↗ ${ctx.labels.linked}`) : null;
+  if (!ctx.isLink) return null;
+  const where = homeOf(ctx.store, ctx.target, ctx.labels);
+  const text = where ? ctx.labels.linkedFrom(where) : ctx.labels.linked;
+  return h('span', { class: 'pb-badge pb-badge--link', title: text }, `↗ ${text}`);
+}
+
+/** Name of the day or ideas list a block sits in (or is). */
+function homeOf(store: PlanStore, block: BlockData, labels: Labels): string | null {
+  let current: BlockData | undefined = block;
+  const seen = new Set<string>();
+  while (current?.parent && !seen.has(current.id)) {
+    seen.add(current.id);
+    current = store.get(current.parent);
+  }
+  if (!current) return null;
+  if (current.type === 'timeline') return dayTitle(store, current, labels);
+  if (current.type === 'pool') return typeof current.payload.label === 'string' && current.payload.label !== '' ? current.payload.label : labels.pool;
+  return null;
 }
 
 /** Auto-generated edit form from the type's fields. */
@@ -196,7 +274,7 @@ function formatDate(date: string | null): string | null {
   return Number.isNaN(parsed.getTime()) ? date : new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(parsed);
 }
 
-export const parts = { title, titleOf, iconButton, itemActions, addButtons, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
+export const parts = { title, titleOf, iconButton, menu, menuItem, blockMenu, itemActions, groupActions, addButtons, homeOf, dragHandle, checkbox, linkBadge, editForm, fieldInput, dayTitle, formatDate };
 
 // ---- Default renderers --------------------------------------------------
 
@@ -229,7 +307,7 @@ const timeline: Renderer = (ctx) => {
         linkBadge(ctx),
       ),
       h('span', { class: 'pb-progress', 'data-state': progress.state }, labels.progress(progress.done, progress.total)),
-      ctx.readonly ? null : h('div', { class: 'pb-actions' }, iconButton('move-up', labels.moveUp, '↑'), iconButton('move-down', labels.moveDown, '↓'), iconButton('delete', labels.delete, '✕')),
+      groupActions(ctx),
     ),
     ctx.editing ? h('div', { class: 'pb-children' }, editForm(ctx)) : null,
     ctx.children,
@@ -251,7 +329,7 @@ const pool: Renderer = (ctx) => {
       dragHandle(ctx),
       h('div', { class: 'pb-group__title' }, ctx.editing ? null : title(ctx, label), linkBadge(ctx)),
       h('span', { class: 'pb-progress' }, labels.poolProgress(progress.done, progress.total)),
-      ctx.readonly ? null : h('div', { class: 'pb-actions' }, iconButton('move-up', labels.moveUp, '↑'), iconButton('move-down', labels.moveDown, '↓'), iconButton('delete', labels.delete, '✕')),
+      groupActions(ctx),
     ),
     ctx.editing ? h('div', { class: 'pb-children' }, editForm(ctx)) : null,
     ctx.children,
